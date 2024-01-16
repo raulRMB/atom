@@ -20,6 +20,7 @@ private:
     wgpu::Device m_Device;
     wgpu::Queue m_Queue;
     wgpu::SwapChain m_SwapChain;
+    wgpu::RenderPipeline m_RenderPipeline;
 public:
     Renderer();
     ~Renderer();
@@ -35,6 +36,7 @@ public:
     void SetupDevice();
     void SetupQueue();
     void SetupSwapChain();
+    void SetupRenderPipeline();
 };
 
 }
