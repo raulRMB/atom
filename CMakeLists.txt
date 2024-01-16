@@ -19,7 +19,12 @@ FILE(GLOB_RECURSE SRC_FILES
 
 add_executable(atom ${SRC_FILES})
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
-set_target_properties(${PROJECT_NAME} PROPERTIES CXX_EXTENSIONS OFF COMPILE_WARNING_AS_ERROR ON)
+set_target_properties(
+        ${PROJECT_NAME} PROPERTIES
+        CXX_EXTENSIONS OFF
+        COMPILE_WARNING_AS_ERROR ON
+        VS_DEBUGGER_ENVIRONMENT "DAWN_DEBUG_BREAK_ON_ERROR=1"
+)
 
 if (MSVC)
     target_compile_options(${PROJECT_NAME} PRIVATE /W4)

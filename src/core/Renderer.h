@@ -15,11 +15,9 @@ class Renderer
 {
 private:
     wgpu::Instance m_Instance;
-    wgpu::Adapter m_Adapter;
     wgpu::Surface m_Surface;
+    wgpu::Adapter m_Adapter;
     wgpu::Device m_Device;
-
-    wgpu::Adapter RequestAdapter(wgpu::Instance instance, const wgpu::RequestAdapterOptions* options);
 public:
     Renderer();
     ~Renderer();
@@ -28,6 +26,11 @@ public:
     void Draw();
 
     static Renderer* Create();
+
+    void SetupInstance();
+    void SetupSurface();
+    void SetupAdapter();
+    void SetupDevice();
 };
 
 }
