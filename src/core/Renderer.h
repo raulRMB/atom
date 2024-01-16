@@ -6,7 +6,7 @@
 #define ATOM_RENDERER_H
 
 #include "../Defines.h"
-#include "dawn/webgpu_cpp.h"
+#include <dawn/webgpu_cpp.h>
 
 namespace atom
 {
@@ -18,6 +18,8 @@ private:
     wgpu::Surface m_Surface;
     wgpu::Adapter m_Adapter;
     wgpu::Device m_Device;
+    wgpu::Queue m_Queue;
+    wgpu::SwapChain m_SwapChain;
 public:
     Renderer();
     ~Renderer();
@@ -31,6 +33,8 @@ public:
     void SetupSurface();
     void SetupAdapter();
     void SetupDevice();
+    void SetupQueue();
+    void SetupSwapChain();
 };
 
 }

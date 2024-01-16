@@ -10,6 +10,20 @@
 namespace wgpu
 {
 
+#if defined(DAWN_ENABLE_D3D12)
+    static wgpu::BackendType backendType = wgpu::BackendType::D3D12;
+#elif defined(DAWN_ENABLE_D3D11)
+    static wgpu::BackendType backendType = wgpu::BackendType::D3D11;
+#elif defined(DAWN_ENABLE_METAL)
+    static wgpu::BackendType backendType = wgpu::BackendType::Metal;
+#elif defined(DAWN_ENABLE_VULKAN)
+    static wgpu::BackendType backendType = wgpu::BackendType::Vulkan;
+#elif defined(DAWN_ENABLE_OPENGLES)
+    static wgpu::BackendType backendType = wgpu::BackendType::OpenGLES;
+#elif defined(DAWN_ENABLE_DESKTOP_GL)
+    static wgpu::BackendType backendType = wgpu::BackendType::OpenGL;
+#endif
+
 namespace atom
 {
 

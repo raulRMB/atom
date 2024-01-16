@@ -3,11 +3,12 @@
 //
 
 #include "Renderer.h"
+#include <webgpu/webgpu_glfw.h>
 #include "Logger.h"
 #include "Engine.h"
-#include <webgpu/webgpu_glfw.h>
 #include <iostream>
 #include "wgpu_atom.h"
+
 
 namespace atom
 {
@@ -25,11 +26,32 @@ void Renderer::Init()
     SetupSurface();
     SetupAdapter();
     SetupDevice();
+    SetupQueue();
+    SetupSwapChain();
 }
 
 void Renderer::Draw()
 {
-
+    wgpu::TextureView backBuffer = m_SwapChain.GetCurrentTextureView();
+    wgpu::CommandEncoder encoder = m_Device.CreateCommandEncoder();
+    wgpu::RenderPassDescriptor renderPassDesc = {};
+    renderPassDesc.nextInChain = nullptr;
+    renderPassDesc.label = "My render pass";
+    wgpu::RenderPassColorAttachment colorAttachment = {};
+    colorAttachment.view = backBuffer;
+    colorAttachment.resolveTarget = nullptr;
+    colorAttachment.clearValue = {0.0f, 0.0f, 0.0f, 1.0f};
+    colorAttachment.loadOp = wgpu::LoadOp::Clear;
+    colorAttachment.storeOp = wgpu::StoreOp::Store;
+    renderPassDesc.timestampWrites = nullptr;
+    renderPassDesc.colorAttachmentCount = 1;
+    renderPassDesc.colorAttachments = &colorAttachment;
+    renderPassDesc.depthStencilAttachment = nullptr;
+    wgpu::RenderPassEncoder pass = encoder.BeginRenderPass(&renderPassDesc);
+    pass.End();
+    wgpu::CommandBuffer commands = encoder.Finish();
+    m_Queue.Submit(1, &commands);
+    m_SwapChain.Present();
 }
 
 Renderer *Renderer::Create()
@@ -63,6 +85,7 @@ void Renderer::SetupAdapter()
     wgpu::RequestAdapterOptions adapterOpts = {};
     adapterOpts.nextInChain = nullptr;
     adapterOpts.compatibleSurface = m_Surface;
+    adapterOpts.backendType = wgpu::BackendType::D3D12;
 
     m_Adapter = wgpu::atom::RequestAdapter(m_Instance, &adapterOpts);
 
@@ -95,6 +118,30 @@ void Renderer::SetupDevice()
         LogError("Device %s: %s", errorTypeString, message);
     };
     m_Device.SetUncapturedErrorCallback(onDeviceError, nullptr);
+}
+
+void Renderer::SetupQueue()
+{
+    m_Queue = m_Device.GetQueue();
+
+    auto onQueueWorkDone = [](WGPUQueueWorkDoneStatus status, [[maybe_unused]] void* userdata)
+    {
+        LogInfo("Queue work done: %d", status);
+    };
+    m_Queue.OnSubmittedWorkDone(onQueueWorkDone, nullptr);
+}
+
+void Renderer::SetupSwapChain()
+{
+    wgpu::SwapChainDescriptor swapChainDesc = {};
+    swapChainDesc.nextInChain = nullptr;
+    swapChainDesc.label = "My Swap Chain";
+    swapChainDesc.width = 640;
+    swapChainDesc.height = 480;
+    swapChainDesc.format = wgpu::TextureFormat::BGRA8Unorm;
+    swapChainDesc.usage = wgpu::TextureUsage::RenderAttachment;
+    swapChainDesc.presentMode = wgpu::PresentMode::Fifo;
+    m_SwapChain = m_Device.CreateSwapChain(m_Surface, &swapChainDesc);
 }
 
 }
