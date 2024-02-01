@@ -37,6 +37,7 @@ public:
     void SetupQueue();
     void SetupSwapChain();
     void SetupRenderPipeline();
+    void SetupBuffers();
 };
 
 }

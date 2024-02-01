@@ -15,7 +15,7 @@ namespace atom
 class Engine
 {
 public:
-    friend class Application;
+    friend class App;
 
     Engine();
     ~Engine();
@@ -32,9 +32,9 @@ private:
     class Renderer* m_pRenderer;
 
 public:
-    Window* GetWindow() const;
+    [[nodiscard]] Window* GetWindow() const;
     GLFWwindow* GetGLFWWindow();
-    Renderer* GetRenderer() const;
+    [[nodiscard]] Renderer* GetRenderer() const;
 };
 
 }

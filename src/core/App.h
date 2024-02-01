@@ -2,8 +2,8 @@
 // Created by Raul Romero on 2024-01-13.
 //
 
-#ifndef ATOM_APPLICATION_H
-#define ATOM_APPLICATION_H
+#ifndef ATOM_APP_H
+#define ATOM_APP_H
 
 #include "../Defines.h"
 #include "Engine.h"
@@ -11,14 +11,14 @@
 namespace atom
 {
 
-class Application
+class App
 {
 public:
-    Application();
-    ~Application();
+    App();
+    ~App();
     static i32 Run(int argc, char** argv);
 private:
-    static Application& Instance();
+    static App& Instance();
     void Start();
 private:
     class Engine m_Engine;
@@ -27,4 +27,4 @@ private:
 
 }
 
-#endif //ATOM_APPLICATION_H
+#endif //ATOM_APP_H

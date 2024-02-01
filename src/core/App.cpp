@@ -2,22 +2,22 @@
 // Created by Raul Romero on 2024-01-13.
 //
 
-#include "Application.h"
+#include "App.h"
 #include <iostream>
 #include "Window.h"
 
 namespace atom
 {
 
-Application::Application()
+App::App()
 {
 }
 
-Application::~Application()
+App::~App()
 {
 }
 
-i32 Application::Run(int argc, char** argv)
+i32 App::Run(int argc, char** argv)
 {
     if(Instance().m_bRunning)
     {
@@ -32,13 +32,13 @@ i32 Application::Run(int argc, char** argv)
     return EXIT_SUCCESS;
 }
 
-Application& Application::Instance()
+App& App::Instance()
 {
-    static Application instance;
+    static App instance;
     return instance;
 }
 
-void Application::Start()
+void App::Start()
 {
     m_bRunning = true;
 }

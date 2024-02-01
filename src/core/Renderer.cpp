@@ -8,6 +8,7 @@
 #include "Engine.h"
 #include <iostream>
 #include "wgpu_atom.h"
+#include "Reader.h"
 
 
 namespace atom
@@ -20,6 +21,9 @@ Renderer::Renderer() : m_Instance(nullptr), m_Surface(nullptr), m_Adapter(nullpt
 
 Renderer::~Renderer() = default;
 
+int vertexCount;
+wgpu::Buffer vertexBuffer;
+std::vector<float> vertexData;
 void Renderer::Init()
 {
     SetupInstance();
@@ -29,6 +33,8 @@ void Renderer::Init()
     SetupQueue();
     SetupSwapChain();
     SetupRenderPipeline();
+
+    SetupBuffers();
 }
 
 void Renderer::Draw()
@@ -50,7 +56,8 @@ void Renderer::Draw()
     renderPassDesc.depthStencilAttachment = nullptr;
     wgpu::RenderPassEncoder renderPass = encoder.BeginRenderPass(&renderPassDesc);
     renderPass.SetPipeline(m_RenderPipeline);
-    renderPass.Draw(3, 1, 0, 0);
+    renderPass.SetVertexBuffer(0, vertexBuffer, 0, vertexData.size() * sizeof(float));
+    renderPass.Draw(vertexCount, 1, 0, 0);
     renderPass.End();
     wgpu::CommandBuffer commands = encoder.Finish();
     m_Queue.Submit(1, &commands);
@@ -111,6 +118,19 @@ void Renderer::SetupDevice()
     deviceDesc.requiredLimits = nullptr;
     deviceDesc.defaultQueue.nextInChain = nullptr;
     deviceDesc.defaultQueue.label = "The default queue";
+
+    wgpu::SupportedLimits supportedLimits;
+    m_Adapter.GetLimits(&supportedLimits);
+
+    wgpu::RequiredLimits requiredLimits = {};
+    requiredLimits.limits.maxVertexAttributes = 1;
+    requiredLimits.limits.maxVertexBuffers = 1;
+    requiredLimits.limits.maxBufferSize = 6 * 2 * sizeof(float);
+    requiredLimits.limits.maxVertexBufferArrayStride = 2 * sizeof(float);
+    requiredLimits.limits.minStorageBufferOffsetAlignment = supportedLimits.limits.minStorageBufferOffsetAlignment;
+    requiredLimits.limits.minUniformBufferOffsetAlignment = supportedLimits.limits.minUniformBufferOffsetAlignment;
+
+    deviceDesc.requiredLimits = &requiredLimits;
     m_Device = wgpu::atom::RequestDevice(m_Adapter, &deviceDesc);
     LogInfo("Device created: %p", m_Device.Get());
 
@@ -149,28 +169,27 @@ void Renderer::SetupSwapChain()
 
 void Renderer::SetupRenderPipeline()
 {
-    const char* shaderSource = R"(
-        @vertex
-        fn vs_main(@builtin(vertex_index) in_vertex_index: u32) -> @builtin(position) vec4f {
-            var p = vec2f(0.0, 0.0);
-            if (in_vertex_index == 0u) {
-                p = vec2f(-0.5, -0.5);
-            } else if (in_vertex_index == 1u) {
-                p = vec2f(0.5, -0.5);
-            } else {
-                p = vec2f(0.0, 0.5);
-            }
-            return vec4f(p, 0.0, 1.0);
-        }
+    vertexData = {
+        -0.5, -0.5,
+        +0.5, -0.5,
+        +0.0, +0.5,
 
-        @fragment
-        fn fs_main() -> @location(0) vec4f {
-            return vec4f(0.0, 0.4, 1.0, 1.0);
-        }
-    )";
+        -0.55f, -0.5,
+        -0.05f, +0.5,
+        -0.55f, +0.5
+    };
+    vertexCount = static_cast<int>(vertexData.size() / 2);
+
+    wgpu::BufferDescriptor bufferDesc;
+    bufferDesc.size = vertexData.size() * sizeof(float);
+    bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Vertex;
+    bufferDesc.mappedAtCreation = false;
+    vertexBuffer = m_Device.CreateBuffer(&bufferDesc);
+
+    m_Queue.WriteBuffer(vertexBuffer, 0, vertexData.data(), bufferDesc.size);
 
     wgpu::ShaderModuleWGSLDescriptor shaderCodeDesc;
-    shaderCodeDesc.code = shaderSource;
+    shaderCodeDesc.code = Reader::ReadCStr("../assets/shaders/shader.wgsl");
 
     wgpu::ShaderModuleDescriptor shaderDesc = {};
     #ifdef WEBGPU_BACKEND_WGPU
@@ -222,7 +241,28 @@ void Renderer::SetupRenderPipeline()
 
     pipelineDesc.layout = nullptr;
 
+    wgpu::VertexBufferLayout vertexBufferLayout{};
+    wgpu::VertexAttribute vertexAttrib{};
+
+    vertexAttrib.shaderLocation = 0;
+    vertexAttrib.format = wgpu::VertexFormat::Float32x2;
+    vertexAttrib.offset = 0;
+
+    vertexBufferLayout.arrayStride = 2 * sizeof(float);
+    vertexBufferLayout.stepMode = wgpu::VertexStepMode::Vertex;
+
+    vertexBufferLayout.attributeCount = 1;
+    vertexBufferLayout.attributes = &vertexAttrib;
+
+    pipelineDesc.vertex.bufferCount = 1;
+    pipelineDesc.vertex.buffers = &vertexBufferLayout;
+
     m_RenderPipeline = m_Device.CreateRenderPipeline(&pipelineDesc);
+}
+
+void Renderer::SetupBuffers()
+{
+
 }
 
 }
