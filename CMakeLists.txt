@@ -39,13 +39,21 @@ if(XCODE)
 endif()
 
 set(DAWN_FETCH_DEPENDENCIES ON)
-CPMAddPackage(NAME dawn URL "https://dawn.googlesource.com/dawn/+archive/refs/heads/main.tar.gz")
-
 CPMAddPackage(
-  NAME glm
-  GITHUB_REPOSITORY g-truc/glm
-  GIT_TAG 0.9.9.7
+    NAME dawn 
+    URL "https://dawn.googlesource.com/dawn/+archive/refs/heads/main.tar.gz"
 )
 
-target_include_directories(${PROJECT_NAME} PRIVATE glm)
-target_link_libraries(${PROJECT_NAME} PRIVATE webgpu_cpp webgpu_dawn webgpu_glfw glm)
+CPMAddPackage(
+    NAME glm
+    GITHUB_REPOSITORY g-truc/glm
+    GIT_TAG 0.9.9.7
+)
+
+CPMAddPackage(
+    NAME tiny_gltf
+    GITHUB_REPOSITORY syoyo/tinygltf
+    GIT_TAG v2.8.20
+)
+
+target_link_libraries(${PROJECT_NAME} PRIVATE webgpu_cpp webgpu_dawn webgpu_glfw glm tinygltf)
