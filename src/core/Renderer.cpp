@@ -21,9 +21,12 @@ Renderer::Renderer() : m_Instance(nullptr), m_Surface(nullptr), m_Adapter(nullpt
 
 Renderer::~Renderer() = default;
 
-int vertexCount;
+int indexCount;
 wgpu::Buffer vertexBuffer;
-std::vector<float> vertexData;
+std::vector<float> pointData;
+wgpu::Buffer indexBuffer;
+std::vector<u16> indexData;
+
 void Renderer::Init()
 {
     SetupInstance();
@@ -56,8 +59,9 @@ void Renderer::Draw()
     renderPassDesc.depthStencilAttachment = nullptr;
     wgpu::RenderPassEncoder renderPass = encoder.BeginRenderPass(&renderPassDesc);
     renderPass.SetPipeline(m_RenderPipeline);
-    renderPass.SetVertexBuffer(0, vertexBuffer, 0, vertexData.size() * sizeof(float));
-    renderPass.Draw(vertexCount, 1, 0, 0);
+    renderPass.SetVertexBuffer(0, vertexBuffer, 0, pointData.size() * sizeof(float));
+    renderPass.SetIndexBuffer(indexBuffer, wgpu::IndexFormat::Uint16, 0, indexData.size() * sizeof(u16));
+    renderPass.DrawIndexed(indexCount, 1, 0, 0, 0);
     renderPass.End();
     wgpu::CommandBuffer commands = encoder.Finish();
     m_Queue.Submit(1, &commands);
@@ -169,24 +173,36 @@ void Renderer::SetupSwapChain()
 
 void Renderer::SetupRenderPipeline()
 {
-    vertexData = {
-        -0.5, -0.5,
-        +0.5, -0.5,
-        +0.0, +0.5,
-
-        -0.55f, -0.5,
-        -0.05f, +0.5,
-        -0.55f, +0.5
+    pointData = {
+            -0.5, -0.5, // A
+            +0.5, -0.5,
+            +0.5, +0.5, // C
+            -0.5, +0.5,
     };
-    vertexCount = static_cast<int>(vertexData.size() / 2);
+
+    indexData = {
+            0, 1, 2, // Triangle #0
+            0, 2, 3  // Triangle #1
+    };
+
+    indexCount = static_cast<int>(indexData.size());
 
     wgpu::BufferDescriptor bufferDesc;
-    bufferDesc.size = vertexData.size() * sizeof(float);
+    bufferDesc.size = pointData.size() * sizeof(float);
     bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Vertex;
     bufferDesc.mappedAtCreation = false;
     vertexBuffer = m_Device.CreateBuffer(&bufferDesc);
 
-    m_Queue.WriteBuffer(vertexBuffer, 0, vertexData.data(), bufferDesc.size);
+    m_Queue.WriteBuffer(vertexBuffer, 0, pointData.data(), bufferDesc.size);
+
+
+    wgpu::BufferDescriptor indexBufferDesc;
+    indexBufferDesc.size = indexData.size() * sizeof(u16);
+    indexBufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Index;
+    indexBufferDesc.mappedAtCreation = false;
+    indexBuffer = m_Device.CreateBuffer(&indexBufferDesc);
+
+    m_Queue.WriteBuffer(indexBuffer, 0, indexData.data(), indexBufferDesc.size);
 
     wgpu::ShaderModuleWGSLDescriptor shaderCodeDesc;
     shaderCodeDesc.code = Reader::ReadTextFile("../assets/shaders/shader.wgsl");
