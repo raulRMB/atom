@@ -10,7 +10,6 @@
 #include "wgpu_atom.h"
 #include "Reader.h"
 
-
 namespace atom
 {
 
