@@ -205,7 +205,7 @@ void Renderer::SetupRenderPipeline()
     m_Queue.WriteBuffer(indexBuffer, 0, indexData.data(), indexBufferDesc.size);
 
     wgpu::ShaderModuleWGSLDescriptor shaderCodeDesc;
-    shaderCodeDesc.code = Reader::ReadTextFile("../assets/shaders/shader.wgsl");
+    shaderCodeDesc.code = Reader::ReadTextFile("../../../assets/shaders/shader.wgsl");
 
     wgpu::ShaderModuleDescriptor shaderDesc = {};
     #ifdef WEBGPU_BACKEND_WGPU
