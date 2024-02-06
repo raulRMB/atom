@@ -56,4 +56,10 @@ CPMAddPackage(
     GIT_TAG v2.8.20
 )
 
-target_link_libraries(${PROJECT_NAME} PRIVATE webgpu_cpp webgpu_dawn webgpu_glfw glm tinygltf)
+CPMAddPackage(
+    NAME EnTT
+    GITHUB_REPOSITORY skypjack/entt
+    GIT_TAG v3.13.1
+)
+
+target_link_libraries(${PROJECT_NAME} PRIVATE webgpu_cpp webgpu_dawn webgpu_glfw glm tinygltf EnTT)
