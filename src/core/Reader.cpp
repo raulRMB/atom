@@ -121,7 +121,7 @@ const char* Reader::ReadCStr()
     return reader.GetMemory();
 }
 
-const char *Reader::ReadCStr(const std::string &path)
+const char *Reader::ReadTextFile(const std::string &path)
 {
     Reader::TextFileReader().Open(path);
     return ReadCStr();

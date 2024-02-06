@@ -43,7 +43,7 @@ private:
 
     std::fstream m_File;
 public:
-    static const char* ReadCStr(const std::string& path);
+    static const char* ReadTextFile(const std::string& path);
 private:
     Reader(EReaderType type = EReaderType::File, EReaderMode mode = EReaderMode::Read, EReaderFormat format = EReaderFormat::Text);
     ~Reader();
