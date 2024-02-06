@@ -22,8 +22,12 @@ Renderer::Renderer() : m_Instance(nullptr), m_Surface(nullptr), m_Adapter(nullpt
 Renderer::~Renderer() = default;
 
 int indexCount;
-wgpu::Buffer vertexBuffer;
+wgpu::Buffer positionBuffer;
 std::vector<float> pointData;
+
+wgpu::Buffer colorBuffer;
+std::vector<float> colorData;
+
 wgpu::Buffer indexBuffer;
 std::vector<u16> indexData;
 
@@ -36,7 +40,6 @@ void Renderer::Init()
     SetupQueue();
     SetupSwapChain();
     SetupRenderPipeline();
-
     SetupBuffers();
 }
 
@@ -59,7 +62,8 @@ void Renderer::Draw()
     renderPassDesc.depthStencilAttachment = nullptr;
     wgpu::RenderPassEncoder renderPass = encoder.BeginRenderPass(&renderPassDesc);
     renderPass.SetPipeline(m_RenderPipeline);
-    renderPass.SetVertexBuffer(0, vertexBuffer, 0, pointData.size() * sizeof(float));
+    renderPass.SetVertexBuffer(0, positionBuffer, 0, pointData.size() * sizeof(float));
+    renderPass.SetVertexBuffer(1, colorBuffer, 0, colorData.size() * sizeof(float));
     renderPass.SetIndexBuffer(indexBuffer, wgpu::IndexFormat::Uint16, 0, indexData.size() * sizeof(u16));
     renderPass.DrawIndexed(indexCount, 1, 0, 0, 0);
     renderPass.End();
@@ -127,12 +131,13 @@ void Renderer::SetupDevice()
     m_Adapter.GetLimits(&supportedLimits);
 
     wgpu::RequiredLimits requiredLimits = {};
-    requiredLimits.limits.maxVertexAttributes = 1;
+    requiredLimits.limits.maxVertexAttributes = 2;
     requiredLimits.limits.maxVertexBuffers = 1;
-    requiredLimits.limits.maxBufferSize = 6 * 2 * sizeof(float);
-    requiredLimits.limits.maxVertexBufferArrayStride = 2 * sizeof(float);
+    requiredLimits.limits.maxBufferSize = 6 * 6 * sizeof(float);
+    requiredLimits.limits.maxVertexBufferArrayStride = 6 * sizeof(float);
     requiredLimits.limits.minStorageBufferOffsetAlignment = supportedLimits.limits.minStorageBufferOffsetAlignment;
     requiredLimits.limits.minUniformBufferOffsetAlignment = supportedLimits.limits.minUniformBufferOffsetAlignment;
+    requiredLimits.limits.maxInterStageShaderComponents = 3;
 
     deviceDesc.requiredLimits = &requiredLimits;
     m_Device = wgpu::atom::RequestDevice(m_Adapter, &deviceDesc);
@@ -173,37 +178,6 @@ void Renderer::SetupSwapChain()
 
 void Renderer::SetupRenderPipeline()
 {
-    pointData = {
-            -0.5, -0.5, // A
-            +0.5, -0.5,
-            +0.5, +0.5, // C
-            -0.5, +0.5,
-    };
-
-    indexData = {
-            0, 1, 2, // Triangle #0
-            0, 2, 3  // Triangle #1
-    };
-
-    indexCount = static_cast<int>(indexData.size());
-
-    wgpu::BufferDescriptor bufferDesc;
-    bufferDesc.size = pointData.size() * sizeof(float);
-    bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Vertex;
-    bufferDesc.mappedAtCreation = false;
-    vertexBuffer = m_Device.CreateBuffer(&bufferDesc);
-
-    m_Queue.WriteBuffer(vertexBuffer, 0, pointData.data(), bufferDesc.size);
-
-
-    wgpu::BufferDescriptor indexBufferDesc;
-    indexBufferDesc.size = indexData.size() * sizeof(u16);
-    indexBufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Index;
-    indexBufferDesc.mappedAtCreation = false;
-    indexBuffer = m_Device.CreateBuffer(&indexBufferDesc);
-
-    m_Queue.WriteBuffer(indexBuffer, 0, indexData.data(), indexBufferDesc.size);
-
     wgpu::ShaderModuleWGSLDescriptor shaderCodeDesc;
     shaderCodeDesc.code = Reader::ReadTextFile("../../../assets/shaders/shader.wgsl");
 
@@ -257,28 +231,74 @@ void Renderer::SetupRenderPipeline()
 
     pipelineDesc.layout = nullptr;
 
-    wgpu::VertexBufferLayout vertexBufferLayout{};
-    wgpu::VertexAttribute vertexAttrib{};
+    std::vector<wgpu::VertexBufferLayout> vertexBufferLayouts(2);
+    wgpu::VertexAttribute positionAttrib{};
 
-    vertexAttrib.shaderLocation = 0;
-    vertexAttrib.format = wgpu::VertexFormat::Float32x2;
-    vertexAttrib.offset = 0;
+    positionAttrib.shaderLocation = 0;
+    positionAttrib.format = wgpu::VertexFormat::Float32x2;
+    positionAttrib.offset = 0;
 
-    vertexBufferLayout.arrayStride = 2 * sizeof(float);
-    vertexBufferLayout.stepMode = wgpu::VertexStepMode::Vertex;
+    vertexBufferLayouts[0].attributeCount = 1;
+    vertexBufferLayouts[0].arrayStride = 2 * sizeof(float);
+    vertexBufferLayouts[0].attributes = &positionAttrib;
+    vertexBufferLayouts[0].stepMode = wgpu::VertexStepMode::Vertex;
 
-    vertexBufferLayout.attributeCount = 1;
-    vertexBufferLayout.attributes = &vertexAttrib;
+    wgpu::VertexAttribute colorAttrib{};
 
-    pipelineDesc.vertex.bufferCount = 1;
-    pipelineDesc.vertex.buffers = &vertexBufferLayout;
+    colorAttrib.shaderLocation = 1;
+    colorAttrib.format = wgpu::VertexFormat::Float32x4;
+    colorAttrib.offset = 0;
+
+    vertexBufferLayouts[1].attributeCount = 1;
+    vertexBufferLayouts[1].arrayStride = 4 * sizeof(float);
+    vertexBufferLayouts[1].attributes = &colorAttrib;
+    vertexBufferLayouts[1].stepMode = wgpu::VertexStepMode::Vertex;
+
+    pipelineDesc.vertex.bufferCount = static_cast<u32>(vertexBufferLayouts.size());
+    pipelineDesc.vertex.buffers = vertexBufferLayouts.data();
 
     m_RenderPipeline = m_Device.CreateRenderPipeline(&pipelineDesc);
 }
 
 void Renderer::SetupBuffers()
 {
+    pointData = {
+        -0.5, -0.5, // A
+        +0.5, -0.5,
+        +0.5, +0.5, // C
+        -0.5, +0.5,
+    };
 
+    colorData = {
+        1.0, 0.0, 0.0, 1.0, // A
+        0.0, 1.0, 0.0, 1.0, // B
+        0.0, 0.0, 1.0, 1.0, // C
+        1.0, 1.0, 0.0, 1.0, // D
+    };
+
+
+    indexData = {
+            0, 1, 2, // Triangle #0
+            0, 2, 3  // Triangle #1
+    };
+
+    indexCount = static_cast<int>(indexData.size());
+
+    wgpu::BufferDescriptor bufferDesc;
+    bufferDesc.size = pointData.size() * sizeof(float);
+    bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Vertex;
+    bufferDesc.mappedAtCreation = false;
+    positionBuffer = m_Device.CreateBuffer(&bufferDesc);
+    m_Queue.WriteBuffer(positionBuffer, 0, pointData.data(), bufferDesc.size);
+
+    bufferDesc.size = colorData.size() * sizeof(float);
+    colorBuffer = m_Device.CreateBuffer(&bufferDesc);
+    m_Queue.WriteBuffer(colorBuffer, 0, colorData.data(), bufferDesc.size);
+
+    bufferDesc.size = indexData.size() * sizeof(u16);
+    bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Index;
+    indexBuffer = m_Device.CreateBuffer(&bufferDesc);
+    m_Queue.WriteBuffer(indexBuffer, 0, indexData.data(), bufferDesc.size);
 }
 
 }
