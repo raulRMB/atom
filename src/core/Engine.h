@@ -6,6 +6,9 @@
 #define ATOM_ENGINE_H
 
 #include "../Defines.h"
+#include "entt/entt.hpp"
+#include "Scene.h"
+#include <webgpu/webgpu_cpp.h>
 
 struct GLFWwindow;
 
@@ -30,11 +33,28 @@ private:
 private:
     class Window* m_pWindow;
     class Renderer* m_pRenderer;
+    class Scene* m_pCurrentScene;
 
 public:
     [[nodiscard]] Window* GetWindow() const;
     GLFWwindow* GetGLFWWindow();
     [[nodiscard]] Renderer* GetRenderer() const;
+    class Scene* GetCurrentScene() const;
+
+    template<typename ...T>
+    static auto GetView()
+    {
+		return Instance().GetCurrentScene()->m_Registry.view<T...>();
+    }
+
+    template <typename T>
+    static T& GetComponent(const entt::entity& entity) 
+    { 
+        return Instance().GetCurrentScene()->m_Registry.get<T>(entity);
+    }
+
+    static wgpu::Device& GetDevice();
+    static wgpu::Queue& GetQueue();
 };
 
 }

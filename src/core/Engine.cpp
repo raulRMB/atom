@@ -7,6 +7,7 @@
 #include "Renderer.h"
 #include "Window.h"
 #include "Logger.h"
+#include "Scene.h"
 
 namespace atom
 {
@@ -53,6 +54,7 @@ i32 Engine::Init()
 {
     m_pWindow = Window::Create();
     m_pRenderer = Renderer::Create();
+    m_pCurrentScene = new Scene();
 
     return EXIT_SUCCESS;
 }
@@ -71,6 +73,7 @@ i32 Engine::Shutdown()
 {
     delete m_pRenderer;
     delete m_pWindow;
+    delete m_pCurrentScene;
 
     return EXIT_SUCCESS;
 }
@@ -83,6 +86,21 @@ Window* Engine::GetWindow() const
 Renderer* Engine::GetRenderer() const
 {
     return m_pRenderer;
+}
+
+Scene* Engine::GetCurrentScene() const
+{
+    return m_pCurrentScene;
+}
+
+wgpu::Device& Engine::GetDevice()
+{
+    return Instance().GetRenderer()->GetDevice();
+}
+
+wgpu::Queue& Engine::GetQueue()
+{
+    return Instance().GetRenderer()->GetQueue();
 }
 
 GLFWwindow* Engine::GetGLFWWindow()

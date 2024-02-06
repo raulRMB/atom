@@ -38,6 +38,9 @@ public:
     void SetupSwapChain();
     void SetupRenderPipeline();
     void SetupBuffers();
+
+    wgpu::Device& GetDevice();
+    wgpu::Queue& GetQueue();
 };
 
 }

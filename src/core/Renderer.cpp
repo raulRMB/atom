@@ -9,6 +9,7 @@
 #include <iostream>
 #include "wgpu_atom.h"
 #include "Reader.h"
+#include "3dRenderSystem.h"
 
 namespace atom
 {
@@ -19,16 +20,6 @@ Renderer::Renderer() : m_Instance(nullptr), m_Surface(nullptr), m_Adapter(nullpt
 }
 
 Renderer::~Renderer() = default;
-
-int indexCount;
-wgpu::Buffer positionBuffer;
-std::vector<float> pointData;
-
-wgpu::Buffer colorBuffer;
-std::vector<float> colorData;
-
-wgpu::Buffer indexBuffer;
-std::vector<u16> indexData;
 
 void Renderer::Init()
 {
@@ -61,10 +52,10 @@ void Renderer::Draw()
     renderPassDesc.depthStencilAttachment = nullptr;
     wgpu::RenderPassEncoder renderPass = encoder.BeginRenderPass(&renderPassDesc);
     renderPass.SetPipeline(m_RenderPipeline);
-    renderPass.SetVertexBuffer(0, positionBuffer, 0, pointData.size() * sizeof(float));
-    renderPass.SetVertexBuffer(1, colorBuffer, 0, colorData.size() * sizeof(float));
-    renderPass.SetIndexBuffer(indexBuffer, wgpu::IndexFormat::Uint16, 0, indexData.size() * sizeof(u16));
-    renderPass.DrawIndexed(indexCount, 1, 0, 0, 0);
+
+    const Render3dSystem& rend = System::Get<Render3dSystem>();
+    rend.OnFrame(renderPass);
+
     renderPass.End();
     wgpu::CommandBuffer commands = encoder.Finish();
     m_Queue.Submit(1, &commands);
@@ -144,8 +135,7 @@ void Renderer::SetupDevice()
 
     auto onDeviceError = [](WGPUErrorType type, const char* message, [[maybe_unused]] void* userdata)
     {
-        const char *errorTypeString;
-        errorTypeString = wgpu::atom::ErrorTypeToString(type).c_str();
+        const char *errorTypeString = wgpu::atom::ErrorTypeToString(type).c_str();
         LogError("Device %s: %s", errorTypeString, message);
     };
     m_Device.SetUncapturedErrorCallback(onDeviceError, nullptr);
@@ -261,43 +251,17 @@ void Renderer::SetupRenderPipeline()
 
 void Renderer::SetupBuffers()
 {
-    pointData = {
-        -0.5, -0.5, // A
-        +0.5, -0.5,
-        +0.5, +0.5, // C
-        -0.5, +0.5,
-    };
+    
+}
 
-    colorData = {
-        1.0, 0.0, 0.0, 1.0, // A
-        0.0, 1.0, 0.0, 1.0, // B
-        0.0, 0.0, 1.0, 1.0, // C
-        1.0, 1.0, 0.0, 1.0, // D
-    };
+wgpu::Device& Renderer::GetDevice()
+{
+    return m_Device;
+}
 
-
-    indexData = {
-            0, 1, 2, // Triangle #0
-            0, 2, 3  // Triangle #1
-    };
-
-    indexCount = static_cast<int>(indexData.size());
-
-    wgpu::BufferDescriptor bufferDesc;
-    bufferDesc.size = pointData.size() * sizeof(float);
-    bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Vertex;
-    bufferDesc.mappedAtCreation = false;
-    positionBuffer = m_Device.CreateBuffer(&bufferDesc);
-    m_Queue.WriteBuffer(positionBuffer, 0, pointData.data(), bufferDesc.size);
-
-    bufferDesc.size = colorData.size() * sizeof(float);
-    colorBuffer = m_Device.CreateBuffer(&bufferDesc);
-    m_Queue.WriteBuffer(colorBuffer, 0, colorData.data(), bufferDesc.size);
-
-    bufferDesc.size = indexData.size() * sizeof(u16);
-    bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Index;
-    indexBuffer = m_Device.CreateBuffer(&bufferDesc);
-    m_Queue.WriteBuffer(indexBuffer, 0, indexData.data(), bufferDesc.size);
+wgpu::Queue& Renderer::GetQueue()
+{
+    return m_Queue;
 }
 
 }
