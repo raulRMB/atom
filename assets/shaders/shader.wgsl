@@ -8,14 +8,22 @@ struct VertexOutput {
 	@location(0) color: vec4f,
 }
 
-@group(0) @binding(0) var<uniform> uTime: f32;
+struct MyUniforms {
+    color : vec4f,
+    time : f32,
+    pad0 : f32,
+    pad1 : f32,
+    pad2 : f32,
+}
+
+@group(0) @binding(0) var<uniform> uMyUniforms: MyUniforms;
 
 @vertex
 fn vs_main(in: VertexInput) -> VertexOutput {
     var out: VertexOutput;
     var ratio: f32 = 640 / 480;
     var offset = vec2f(-0.5, -0.5);
-    offset += 0.3 * vec2f(cos(uTime), sin(uTime));
+    offset += 0.3 * vec2f(cos(uMyUniforms.time), sin(uMyUniforms.time));
     out.position = vec4f(in.position.x + offset.x, (in.position.y + offset.y) * ratio, 0.0, 1.0);
     out.color = in.color;
     return out;
@@ -23,5 +31,7 @@ fn vs_main(in: VertexInput) -> VertexOutput {
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4f {
-    return vec4f(.4, .4, 0., 1.);
+    let color = in.color.rgb * uMyUniforms.color.rgb;
+    let corrected_color = pow(color, vec3f(2.2));
+    return vec4f(corrected_color, uMyUniforms.color.a);
 }

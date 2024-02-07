@@ -11,6 +11,9 @@
 #include "Reader.h"
 #include "3dRenderSystem.h"
 #include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
+#include <array>
+#include <cmath>
 
 namespace atom
 {
@@ -19,6 +22,13 @@ Renderer::Renderer() : m_Instance(nullptr), m_Surface(nullptr), m_Adapter(nullpt
 {
 
 }
+
+struct MyUniforms
+{
+    glm::vec4 color;
+    float time;
+    float pad[3];
+};
 
 Renderer::~Renderer() = default;
 
@@ -60,7 +70,12 @@ void Renderer::Draw()
     renderPass.SetPipeline(m_RenderPipeline);
     
     float t = static_cast<float>(glfwGetTime());
-    m_Queue.WriteBuffer(uniformBuffer, 0, &t, sizeof(float));
+
+    //MyUniforms uniforms;
+    //uniforms.time = t;
+    //uniforms.color = { 1.f, fmod(t, 1.f), 1.f, 1.f};
+    //m_Queue.WriteBuffer(uniformBufsfer, 0, &uniforms, sizeof(MyUniforms));
+    m_Queue.WriteBuffer(uniformBuffer, offsetof(MyUniforms, time), &t, sizeof(MyUniforms::time));
 
     const Render3dSystem& rend = System::Get<Render3dSystem>();
     rend.RenderFrame(renderPass);
@@ -175,6 +190,7 @@ void Renderer::SetupSwapChain()
     swapChainDesc.format = wgpu::TextureFormat::BGRA8Unorm;
     swapChainDesc.usage = wgpu::TextureUsage::RenderAttachment;
     swapChainDesc.presentMode = wgpu::PresentMode::Fifo;
+
     m_SwapChain = m_Device.CreateSwapChain(m_Surface, &swapChainDesc);
 }
 
@@ -233,9 +249,9 @@ void Renderer::SetupRenderPipeline()
 
     wgpu::BindGroupLayoutEntry bindingLayout{};
     bindingLayout.binding = 0;
-    bindingLayout.visibility = wgpu::ShaderStage::Vertex;
+    bindingLayout.visibility = wgpu::ShaderStage::Vertex | wgpu::ShaderStage::Fragment;
     bindingLayout.buffer.type = wgpu::BufferBindingType::Uniform;
-    bindingLayout.buffer.minBindingSize = sizeof(float);
+    bindingLayout.buffer.minBindingSize = sizeof(MyUniforms);
 
     wgpu::BindGroupLayoutDescriptor bindGroupLayoutDesc{};
     bindGroupLayoutDesc.entryCount = 1;
@@ -278,7 +294,7 @@ void Renderer::SetupRenderPipeline()
     bindGroupEntry.binding = 0;
     bindGroupEntry.buffer = uniformBuffer;
     bindGroupEntry.offset = 0;
-    bindGroupEntry.size = sizeof(float);
+    bindGroupEntry.size = sizeof(MyUniforms);
 
     wgpu::BindGroupDescriptor bindGroupDesc{};
     bindGroupDesc.layout = bindGroupLayout;
@@ -292,10 +308,14 @@ void Renderer::SetupRenderPipeline()
 void Renderer::SetupBuffers()
 {
     wgpu::BufferDescriptor bufferDesc{};
-    bufferDesc.size = sizeof(float);
+    bufferDesc.size = sizeof(MyUniforms);
     bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Uniform;
     bufferDesc.mappedAtCreation = false;
     uniformBuffer = m_Device.CreateBuffer(&bufferDesc);
+    MyUniforms uniforms;
+    uniforms.time = 0.0f;
+    uniforms.color = { 1.0f, 0.0f, 1.0f, 1.0f };
+    m_Queue.WriteBuffer(uniformBuffer, 0, &uniforms, sizeof(MyUniforms));
 }
 
 wgpu::Device& Renderer::GetDevice()

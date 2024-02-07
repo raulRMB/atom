@@ -63,11 +63,12 @@ namespace atom
     {
         va_list args;
         va_start(args, format);
-        char buffer[1024];
-        vsprintf_s(buffer, format, args);
+        char* buffer = new char[16384];
+        vsprintf_s(buffer, 16384, format, args);
         va_end(args);
         std::string outString = "[ERROR]: ";
         outString += buffer;
         std::cout << outString << std::endl;
+        delete[] buffer;
     }
 }

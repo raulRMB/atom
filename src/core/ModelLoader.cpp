@@ -81,22 +81,17 @@ CMesh ModelLoader::LoadMesh(const char* path, EModelImportType modelType)
             }*/
 
             
-            for (u32 i = 0; i < vertexCount - 4; i += 4)
+            for (u32 i = 0; i < vertexCount * 4; i += 4)
             {
 				meshComponent.colorData.push_back(1.0f);
-                meshComponent.colorData.push_back(0.0f);
-                meshComponent.colorData.push_back(0.0f);
+                meshComponent.colorData.push_back(1.0f);
+                meshComponent.colorData.push_back(1.0f);
                 meshComponent.colorData.push_back(1.0f);
 			}
 
             meshComponent.indexCount = indexCount;
         }
     }
-
-    for (i32 i = 3; i < meshComponent.pointData.size() - 3; i += 3)
-    {
-		meshComponent.pointData[i + 2] += 1.f;
-	}
 
 	wgpu::BufferDescriptor bufferDesc;
     bufferDesc.label = "Position Buffer";
