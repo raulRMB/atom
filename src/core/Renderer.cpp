@@ -10,6 +10,7 @@
 #include "wgpu_atom.h"
 #include "Reader.h"
 #include "3dRenderSystem.h"
+#include <GLFW/glfw3.h>
 
 namespace atom
 {
@@ -29,10 +30,12 @@ void Renderer::Init()
     SetupDevice();
     SetupQueue();
     SetupSwapChain();
-    SetupRenderPipeline();
     SetupBuffers();
+    SetupRenderPipeline();
 }
 
+wgpu::BindGroup bindGroup;
+wgpu::Buffer uniformBuffer;
 void Renderer::Draw()
 {
     wgpu::TextureView backBuffer = m_SwapChain.GetCurrentTextureView();
@@ -51,10 +54,16 @@ void Renderer::Draw()
     renderPassDesc.colorAttachments = &colorAttachment;
     renderPassDesc.depthStencilAttachment = nullptr;
     wgpu::RenderPassEncoder renderPass = encoder.BeginRenderPass(&renderPassDesc);
+    
+    renderPass.SetBindGroup(0, bindGroup, 0, nullptr);
+
     renderPass.SetPipeline(m_RenderPipeline);
+    
+    float t = static_cast<float>(glfwGetTime());
+    m_Queue.WriteBuffer(uniformBuffer, 0, &t, sizeof(float));
 
     const Render3dSystem& rend = System::Get<Render3dSystem>();
-    rend.OnFrame(renderPass);
+    rend.RenderFrame(renderPass);
 
     renderPass.End();
     wgpu::CommandBuffer commands = encoder.Finish();
@@ -123,11 +132,15 @@ void Renderer::SetupDevice()
     wgpu::RequiredLimits requiredLimits = {};
     requiredLimits.limits.maxVertexAttributes = 2;
     requiredLimits.limits.maxVertexBuffers = 1;
-    requiredLimits.limits.maxBufferSize = 6 * 6 * sizeof(float);
-    requiredLimits.limits.maxVertexBufferArrayStride = 6 * sizeof(float);
+    requiredLimits.limits.maxBufferSize = 8 * 7 * sizeof(float);
+    requiredLimits.limits.maxVertexBufferArrayStride = 7 * sizeof(float);
     requiredLimits.limits.minStorageBufferOffsetAlignment = supportedLimits.limits.minStorageBufferOffsetAlignment;
     requiredLimits.limits.minUniformBufferOffsetAlignment = supportedLimits.limits.minUniformBufferOffsetAlignment;
     requiredLimits.limits.maxInterStageShaderComponents = 3;
+
+    requiredLimits.limits.maxBindGroups = 1;
+    requiredLimits.limits.maxUniformBuffersPerShaderStage = 1;
+    requiredLimits.limits.maxUniformBufferBindingSize = 16 * 4;
 
     deviceDesc.requiredLimits = &requiredLimits;
     m_Device = wgpu::atom::RequestDevice(m_Adapter, &deviceDesc);
@@ -218,7 +231,22 @@ void Renderer::SetupRenderPipeline()
     pipelineDesc.multisample.mask = ~0u;
     pipelineDesc.multisample.alphaToCoverageEnabled = false;
 
-    pipelineDesc.layout = nullptr;
+    wgpu::BindGroupLayoutEntry bindingLayout{};
+    bindingLayout.binding = 0;
+    bindingLayout.visibility = wgpu::ShaderStage::Vertex;
+    bindingLayout.buffer.type = wgpu::BufferBindingType::Uniform;
+    bindingLayout.buffer.minBindingSize = sizeof(float);
+
+    wgpu::BindGroupLayoutDescriptor bindGroupLayoutDesc{};
+    bindGroupLayoutDesc.entryCount = 1;
+    bindGroupLayoutDesc.entries = &bindingLayout;
+    wgpu::BindGroupLayout bindGroupLayout = m_Device.CreateBindGroupLayout(&bindGroupLayoutDesc);
+
+    wgpu::PipelineLayoutDescriptor layoutDesc{};
+    layoutDesc.bindGroupLayoutCount = 1;
+    layoutDesc.bindGroupLayouts = &bindGroupLayout;
+    wgpu::PipelineLayout layout = m_Device.CreatePipelineLayout(&layoutDesc);
+    pipelineDesc.layout = layout;
 
     std::vector<wgpu::VertexBufferLayout> vertexBufferLayouts(2);
     wgpu::VertexAttribute positionAttrib{};
@@ -246,12 +274,28 @@ void Renderer::SetupRenderPipeline()
     pipelineDesc.vertex.bufferCount = static_cast<u32>(vertexBufferLayouts.size());
     pipelineDesc.vertex.buffers = vertexBufferLayouts.data();
 
+    wgpu::BindGroupEntry bindGroupEntry{};
+    bindGroupEntry.binding = 0;
+    bindGroupEntry.buffer = uniformBuffer;
+    bindGroupEntry.offset = 0;
+    bindGroupEntry.size = sizeof(float);
+
+    wgpu::BindGroupDescriptor bindGroupDesc{};
+    bindGroupDesc.layout = bindGroupLayout;
+    bindGroupDesc.entryCount = bindGroupLayoutDesc.entryCount;
+    bindGroupDesc.entries = &bindGroupEntry;
+    bindGroup = m_Device.CreateBindGroup(&bindGroupDesc);
+
     m_RenderPipeline = m_Device.CreateRenderPipeline(&pipelineDesc);
 }
 
 void Renderer::SetupBuffers()
 {
-    
+    wgpu::BufferDescriptor bufferDesc{};
+    bufferDesc.size = sizeof(float);
+    bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Uniform;
+    bufferDesc.mappedAtCreation = false;
+    uniformBuffer = m_Device.CreateBuffer(&bufferDesc);
 }
 
 wgpu::Device& Renderer::GetDevice()

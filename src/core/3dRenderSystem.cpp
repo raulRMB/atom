@@ -5,7 +5,7 @@
 namespace atom
 { 
 
-void Render3dSystem::OnFrame(const wgpu::RenderPassEncoder& renderPass) const
+void Render3dSystem::RenderFrame(const wgpu::RenderPassEncoder& renderPass) const
 {
     for (auto& entity : Engine::GetView<CMesh>())
     {
@@ -18,8 +18,8 @@ void Render3dSystem::OnFrame(const wgpu::RenderPassEncoder& renderPass) const
 		auto& indexData = mesh.indexData;
 		auto& indexCount = mesh.indexCount;
 
-		renderPass.SetVertexBuffer(0, positionBuffer, 0, pointData.size() * sizeof(float));
-		renderPass.SetVertexBuffer(1, colorBuffer, 0, colorData.size() * sizeof(float));
+		renderPass.SetVertexBuffer(0, positionBuffer, 0, pointData.size() * sizeof(f32));
+		renderPass.SetVertexBuffer(1, colorBuffer, 0, colorData.size() * sizeof(f32));
 		renderPass.SetIndexBuffer(indexBuffer, wgpu::IndexFormat::Uint16, 0, indexData.size() * sizeof(u16));
 		renderPass.DrawIndexed(indexCount, 1, 0, 0, 0);
 	}

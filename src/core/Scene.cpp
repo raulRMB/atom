@@ -10,18 +10,19 @@ namespace atom
 Scene::Scene() : m_Registry()
 {
     auto ent = m_Registry.create();
-     m_Registry.emplace<CMesh>(ent, ModelLoader::LoadMesh("../../../assets/models/box.gltf"));
+    m_Registry.emplace<CMesh>(ent, ModelLoader::LoadMesh("../../../assets/models/su.glb", EModelImportType::glb));
 
+    //CMesh mesh;
     //mesh.indexData = {
     //        0, 1, 2, // Triangle #0
     //        0, 2, 3  // Triangle #1
     //};
     //mesh.indexCount = static_cast<int>(mesh.indexData.size());
     //mesh.pointData = {
-    //    -0.2f - .2f, -0.2f, // A
-    //    +0.2f - .2f, -0.2f,
-    //    +0.2f - .2f, +0.2f, // C
-    //    -0.2f - .2f, +0.2f,
+    //    -0.2f, -0.2f, 1.f, // A
+    //    +0.2f, -0.2f, 0.f,
+    //    +0.2f, +0.2f, 0.f, // C
+    //    -0.2f, +0.2f, 0.f,
     //};
     //mesh.colorData = {
     //    1.0f, 0.0f, 0.0f, 1.0f, // A
@@ -31,9 +32,7 @@ Scene::Scene() : m_Registry()
     //};
     //mesh.Path = "default";
 
-    //mesh.colorBuffer = nullptr;
-    //mesh.indexBuffer = nullptr;
-
+    //wgpu::BufferDescriptor bufferDesc;
     //bufferDesc.size = mesh.pointData.size() * sizeof(float);
     //bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Vertex;
     //bufferDesc.mappedAtCreation = false;

@@ -7,7 +7,7 @@
 namespace atom
 {
 
-CMesh ModelLoader::LoadMesh(const char* path)
+CMesh ModelLoader::LoadMesh(const char* path, EModelImportType modelType)
 {
     CMesh meshComponent;
 
@@ -16,24 +16,28 @@ CMesh ModelLoader::LoadMesh(const char* path)
     std::string err;
     std::string warn;
 
-    bool ret = loader.LoadASCIIFromFile(&model, &err, &warn, path);
-    if (!warn.empty()) {
-        printf("Warn: %s\n", warn.c_str());
-    }
-
-    if (!err.empty()) {
-        printf("Err: %s\n", err.c_str());
-    }
-
-    if (!ret) {
-        printf("Failed to parse glTF\n");
-    }
-    else
+    bool ret = false;
+    switch (modelType)
     {
-        printf("Loaded glTF\n");
+    case EModelImportType::glb:
+        ret = loader.LoadBinaryFromFile(&model, &err, &warn, path);
+        break;
+    case EModelImportType::gltf:
+        ret = loader.LoadASCIIFromFile(&model, &err, &warn, path);
+        break;
+    default:
+        LogError("Unknown model type\n");
+        return meshComponent;
     }
 
-    // Extract vertex and index data from glTF
+    if (!warn.empty())
+        LogWarning(warn.c_str());
+
+    if (!err.empty())
+        LogError(err.c_str());
+
+    if (!ret)
+        LogError("Failed to parse glTF\n");
 
     for (const auto& mesh : model.meshes)
     {
@@ -44,10 +48,10 @@ CMesh ModelLoader::LoadMesh(const char* path)
             const tinygltf::Buffer& buffer = model.buffers[bufferView.buffer];
 
             const void* indexData = &buffer.data[bufferView.byteOffset + accessor.byteOffset];
-            const uint32_t indexCount = static_cast<uint32_t>(accessor.count);
+            const u32 indexCount = static_cast<u32>(accessor.count);
 
             meshComponent.indexData.resize(indexCount);
-            memcpy(meshComponent.indexData.data(), indexData, indexCount * sizeof(uint16_t));
+            memcpy(meshComponent.indexData.data(), indexData, indexCount * sizeof(u16));
 
             const tinygltf::Accessor& positionAccessor = model.accessors[primitive.attributes.at("POSITION")];
             const tinygltf::BufferView& positionView = model.bufferViews[positionAccessor.bufferView];
@@ -56,7 +60,13 @@ CMesh ModelLoader::LoadMesh(const char* path)
             const void* positionData = &positionBuffer.data[positionView.byteOffset + positionAccessor.byteOffset];
             const uint32_t vertexCount = static_cast<uint32_t>(positionAccessor.count);
 
-            meshComponent.pointData.resize(vertexCount);
+            meshComponent.pointData.reserve(vertexCount * 3);
+            for (u32 i = 0; i < vertexCount * 3; i += 3)
+            {
+				meshComponent.pointData.push_back(((float*)positionData)[i + 0]);
+				meshComponent.pointData.push_back(((float*)positionData)[i + 1]);
+				meshComponent.pointData.push_back(((float*)positionData)[i + 2]);
+			}
 
             /*const tinygltf::Accessor& uvAccessor = model.accessors[primitive.attributes.at("COLOR")];
             const tinygltf::BufferView& uvView = model.bufferViews[uvAccessor.bufferView];
@@ -70,40 +80,39 @@ CMesh ModelLoader::LoadMesh(const char* path)
                 vertex = ((float*)positionData)[i + 0] * 0.01f;
             }*/
 
-            for (u32 i = 0; i < vertexCount; i += 7)
+            
+            for (u32 i = 0; i < vertexCount - 4; i += 4)
             {
-                float x = ((float*)positionData)[i + 0] * .1f;
-                float y = ((float*)positionData)[i + 1] * .1f;
-                float z = 0.f;
-
-				meshComponent.pointData[i + 0] = x;
-				meshComponent.pointData[i + 1] = y;
-				meshComponent.pointData[i + 2] = z;
-
-                meshComponent.colorData.push_back(1.0f);
+				meshComponent.colorData.push_back(1.0f);
                 meshComponent.colorData.push_back(0.0f);
                 meshComponent.colorData.push_back(0.0f);
                 meshComponent.colorData.push_back(1.0f);
 			}
-            //                std::cout << i << std::endl;
-            //                memcpy(vertices.data(), positionData, vertexCount * sizeof(PosNormalVertex));
 
             meshComponent.indexCount = indexCount;
         }
     }
 
+    for (i32 i = 3; i < meshComponent.pointData.size() - 3; i += 3)
+    {
+		meshComponent.pointData[i + 2] += 1.f;
+	}
+
 	wgpu::BufferDescriptor bufferDesc;
-	bufferDesc.size = meshComponent.pointData.size() * sizeof(f32);
+    bufferDesc.label = "Position Buffer";
+	bufferDesc.size = (meshComponent.pointData.size() * sizeof(f32) + 3) & ~3;
 	bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Vertex;
 	bufferDesc.mappedAtCreation = false;
     meshComponent.positionBuffer = Engine::GetDevice().CreateBuffer(&bufferDesc);
 	Engine::GetQueue().WriteBuffer(meshComponent.positionBuffer, 0, meshComponent.pointData.data(), bufferDesc.size);
 
-	bufferDesc.size = meshComponent.colorData.size() * sizeof(f32);
+	bufferDesc.size = (meshComponent.colorData.size() * sizeof(f32) + 3) & ~3;
+    bufferDesc.label = "Color Buffer";
     meshComponent.colorBuffer = Engine::GetDevice().CreateBuffer(&bufferDesc);
 	Engine::GetQueue().WriteBuffer(meshComponent.colorBuffer, 0, meshComponent.colorData.data(), bufferDesc.size);
 
-	bufferDesc.size = meshComponent.indexData.size() * sizeof(u16);
+	bufferDesc.size = (meshComponent.indexData.size() * sizeof(u16) + 3) & ~3;
+    bufferDesc.label = "Index Buffer";
 	bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Index;
     meshComponent.indexBuffer = Engine::GetDevice().CreateBuffer(&bufferDesc);
 	Engine::GetQueue().WriteBuffer(meshComponent.indexBuffer, 0, meshComponent.indexData.data(), bufferDesc.size);
