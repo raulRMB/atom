@@ -21,17 +21,14 @@ struct CTransform : public CComponent
 struct CMesh : public CComponent
 {
 	const char* Path;
-	//std::vector<FVertex> Vertices;
-	std::vector<u32> Indices;
-
 	i32 indexCount;
 	wgpu::Buffer positionBuffer;
-	std::vector<f32> pointData;
+	std::vector<f32> pointData{};
 	wgpu::Buffer colorBuffer;
-	std::vector<f32> colorData;
+	std::vector<f32> colorData{};
 
 	wgpu::Buffer indexBuffer;
-	std::vector<u16> indexData;
+	std::vector<u16> indexData{};
 
 };
 

@@ -224,11 +224,11 @@ void Renderer::SetupRenderPipeline()
     wgpu::VertexAttribute positionAttrib{};
 
     positionAttrib.shaderLocation = 0;
-    positionAttrib.format = wgpu::VertexFormat::Float32x2;
+    positionAttrib.format = wgpu::VertexFormat::Float32x3;
     positionAttrib.offset = 0;
 
     vertexBufferLayouts[0].attributeCount = 1;
-    vertexBufferLayouts[0].arrayStride = 2 * sizeof(float);
+    vertexBufferLayouts[0].arrayStride = 3 * sizeof(float);
     vertexBufferLayouts[0].attributes = &positionAttrib;
     vertexBufferLayouts[0].stepMode = wgpu::VertexStepMode::Vertex;
 
