@@ -41,6 +41,8 @@ public:
 
     wgpu::Device& GetDevice();
     wgpu::Queue& GetQueue();
+
+    u32 CeilToNextMultiple(u32 value, u32 step) const;
 };
 
 }

@@ -46,6 +46,8 @@ void Renderer::Init()
 
 wgpu::BindGroup bindGroup;
 wgpu::Buffer uniformBuffer;
+u32 uniformStride;
+
 void Renderer::Draw()
 {
     wgpu::TextureView backBuffer = m_SwapChain.GetCurrentTextureView();
@@ -65,19 +67,28 @@ void Renderer::Draw()
     renderPassDesc.depthStencilAttachment = nullptr;
     wgpu::RenderPassEncoder renderPass = encoder.BeginRenderPass(&renderPassDesc);
     
-    renderPass.SetBindGroup(0, bindGroup, 0, nullptr);
-
     renderPass.SetPipeline(m_RenderPipeline);
-    
-    float t = static_cast<float>(glfwGetTime());
+
+
+    u32 dynamicOffset = 0;
+
+    renderPass.SetBindGroup(0, bindGroup, 1, &dynamicOffset);
+
+    //float t = static_cast<float>(glfwGetTime());
 
     //MyUniforms uniforms;
     //uniforms.time = t;
     //uniforms.color = { 1.f, fmod(t, 1.f), 1.f, 1.f};
     //m_Queue.WriteBuffer(uniformBufsfer, 0, &uniforms, sizeof(MyUniforms));
-    m_Queue.WriteBuffer(uniformBuffer, offsetof(MyUniforms, time), &t, sizeof(MyUniforms::time));
+    //m_Queue.WriteBuffer(uniformBuffer, offsetof(MyUniforms, time), &t, sizeof(MyUniforms::time));
 
     const Render3dSystem& rend = System::Get<Render3dSystem>();
+    rend.RenderFrame(renderPass);
+
+
+    dynamicOffset = uniformStride;
+    renderPass.SetBindGroup(0, bindGroup, 1, &dynamicOffset);
+
     rend.RenderFrame(renderPass);
 
     renderPass.End();
@@ -144,6 +155,10 @@ void Renderer::SetupDevice()
     wgpu::SupportedLimits supportedLimits;
     m_Adapter.GetLimits(&supportedLimits);
 
+    wgpu::Limits deviceLimits = supportedLimits.limits;
+
+    uniformStride = CeilToNextMultiple(sizeof(MyUniforms), deviceLimits.minUniformBufferOffsetAlignment);
+
     wgpu::RequiredLimits requiredLimits = {};
     requiredLimits.limits.maxVertexAttributes = 2;
     requiredLimits.limits.maxVertexBuffers = 1;
@@ -156,6 +171,8 @@ void Renderer::SetupDevice()
     requiredLimits.limits.maxBindGroups = 1;
     requiredLimits.limits.maxUniformBuffersPerShaderStage = 1;
     requiredLimits.limits.maxUniformBufferBindingSize = 16 * 4;
+
+    requiredLimits.limits.maxDynamicUniformBuffersPerPipelineLayout = 1;
 
     deviceDesc.requiredLimits = &requiredLimits;
     m_Device = wgpu::atom::RequestDevice(m_Adapter, &deviceDesc);
@@ -249,6 +266,7 @@ void Renderer::SetupRenderPipeline()
 
     wgpu::BindGroupLayoutEntry bindingLayout{};
     bindingLayout.binding = 0;
+    bindingLayout.buffer.hasDynamicOffset = true;
     bindingLayout.visibility = wgpu::ShaderStage::Vertex | wgpu::ShaderStage::Fragment;
     bindingLayout.buffer.type = wgpu::BufferBindingType::Uniform;
     bindingLayout.buffer.minBindingSize = sizeof(MyUniforms);
@@ -308,14 +326,18 @@ void Renderer::SetupRenderPipeline()
 void Renderer::SetupBuffers()
 {
     wgpu::BufferDescriptor bufferDesc{};
-    bufferDesc.size = sizeof(MyUniforms);
+    bufferDesc.size = uniformStride + sizeof(MyUniforms);
     bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Uniform;
     bufferDesc.mappedAtCreation = false;
     uniformBuffer = m_Device.CreateBuffer(&bufferDesc);
     MyUniforms uniforms;
-    uniforms.time = 0.0f;
-    uniforms.color = { 1.0f, 0.0f, 1.0f, 1.0f };
+    uniforms.time = 1.0f;
+    uniforms.color = { 0.0f, 0.0f, 1.0f, 1.0f };
     m_Queue.WriteBuffer(uniformBuffer, 0, &uniforms, sizeof(MyUniforms));
+
+    uniforms.time = -1.f;
+    uniforms.color = { 1.0f, 0.0f, 1.0f, 1.0f };
+    m_Queue.WriteBuffer(uniformBuffer, uniformStride, &uniforms, sizeof(MyUniforms));
 }
 
 wgpu::Device& Renderer::GetDevice()
@@ -326,6 +348,12 @@ wgpu::Device& Renderer::GetDevice()
 wgpu::Queue& Renderer::GetQueue()
 {
     return m_Queue;
+}
+
+u32 Renderer::CeilToNextMultiple(u32 value, u32 step) const
+{
+    uint32_t divide_and_ceil = value / step + (value % step == 0 ? 0 : 1);
+    return step * divide_and_ceil;
 }
 
 }
