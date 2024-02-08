@@ -7,6 +7,7 @@
 #include <string>
 #include <iostream>
 #include "Logger.h"
+#include <cassert>
 
 namespace atom
 {
@@ -70,5 +71,6 @@ namespace atom
         outString += buffer;
         std::cout << outString << std::endl;
         delete[] buffer;
+        assert(false);
     }
 }

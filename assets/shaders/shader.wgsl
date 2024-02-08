@@ -24,7 +24,7 @@ fn vs_main(in: VertexInput) -> VertexOutput {
     var ratio: f32 = 640 / 480;
     var offset = vec2f(-0.5, -0.5);
     offset += 0.3 * vec2f(cos(uMyUniforms.time), sin(uMyUniforms.time));
-    out.position = vec4f(in.position.x + offset.x, (in.position.y + offset.y) * ratio, 0.0, 1.0);
+    out.position = vec4f(in.position.x + offset.x, (in.position.y + offset.y) * ratio, in.position.z, 1.0);
     out.color = in.color;
     return out;
 }

@@ -47,7 +47,8 @@ void Renderer::Init()
 wgpu::BindGroup bindGroup;
 wgpu::Buffer uniformBuffer;
 u32 uniformStride;
-
+wgpu::TextureFormat depthTextureFormat = wgpu::TextureFormat::Depth16Unorm;
+wgpu::TextureView depthTextureView;
 void Renderer::Draw()
 {
     wgpu::TextureView backBuffer = m_SwapChain.GetCurrentTextureView();
@@ -64,7 +65,18 @@ void Renderer::Draw()
     renderPassDesc.timestampWrites = nullptr;
     renderPassDesc.colorAttachmentCount = 1;
     renderPassDesc.colorAttachments = &colorAttachment;
-    renderPassDesc.depthStencilAttachment = nullptr;
+
+    wgpu::RenderPassDepthStencilAttachment depthStencilAttachment{};
+    depthStencilAttachment.view = depthTextureView;
+    depthStencilAttachment.depthClearValue = 1.0f;
+    depthStencilAttachment.depthLoadOp = wgpu::LoadOp::Clear;
+    depthStencilAttachment.depthStoreOp = wgpu::StoreOp::Store;
+    depthStencilAttachment.depthReadOnly = false;
+    depthStencilAttachment.stencilClearValue = 0;
+    depthStencilAttachment.stencilLoadOp = wgpu::LoadOp::Undefined;
+    depthStencilAttachment.stencilStoreOp = wgpu::StoreOp::Undefined;
+    depthStencilAttachment.stencilReadOnly = true;
+    renderPassDesc.depthStencilAttachment = &depthStencilAttachment;
     wgpu::RenderPassEncoder renderPass = encoder.BeginRenderPass(&renderPassDesc);
     
     renderPass.SetPipeline(m_RenderPipeline);
@@ -75,7 +87,6 @@ void Renderer::Draw()
     renderPass.SetBindGroup(0, bindGroup, 1, &dynamicOffset);
 
     //float t = static_cast<float>(glfwGetTime());
-
     //MyUniforms uniforms;
     //uniforms.time = t;
     //uniforms.color = { 1.f, fmod(t, 1.f), 1.f, 1.f};
@@ -84,7 +95,6 @@ void Renderer::Draw()
 
     const Render3dSystem& rend = System::Get<Render3dSystem>();
     rend.RenderFrame(renderPass);
-
 
     dynamicOffset = uniformStride;
     renderPass.SetBindGroup(0, bindGroup, 1, &dynamicOffset);
@@ -174,6 +184,10 @@ void Renderer::SetupDevice()
 
     requiredLimits.limits.maxDynamicUniformBuffersPerPipelineLayout = 1;
 
+    requiredLimits.limits.maxTextureDimension1D = 480;
+    requiredLimits.limits.maxTextureDimension2D = 640;
+    requiredLimits.limits.maxTextureArrayLayers = 1;
+
     deviceDesc.requiredLimits = &requiredLimits;
     m_Device = wgpu::atom::RequestDevice(m_Adapter, &deviceDesc);
     LogInfo("Device created: %p", m_Device.Get());
@@ -243,8 +257,6 @@ void Renderer::SetupRenderPipeline()
     fragmentState.constantCount = 0;
     fragmentState.constants = nullptr;
     pipelineDesc.fragment = &fragmentState;
-
-    pipelineDesc.depthStencil = nullptr;
 
     wgpu::BlendState blendState;
 
@@ -319,6 +331,37 @@ void Renderer::SetupRenderPipeline()
     bindGroupDesc.entryCount = bindGroupLayoutDesc.entryCount;
     bindGroupDesc.entries = &bindGroupEntry;
     bindGroup = m_Device.CreateBindGroup(&bindGroupDesc);
+
+    wgpu::DepthStencilState depthStencilState{};
+    depthStencilState.depthWriteEnabled = true;
+    depthStencilState.depthCompare = wgpu::CompareFunction::Less;
+    depthStencilState.stencilReadMask = 0;
+    depthStencilState.stencilWriteMask = 0;
+    depthStencilState.format = depthTextureFormat;
+    pipelineDesc.depthStencil = &depthStencilState;
+
+    wgpu::TextureDescriptor depthTextureDesc;
+    depthTextureDesc.dimension = wgpu::TextureDimension::e2D;
+    depthTextureDesc.format = depthTextureFormat;
+    depthTextureDesc.mipLevelCount = 1;
+    depthTextureDesc.sampleCount = 1;
+    depthTextureDesc.size = { 640, 480, 1 };
+    depthTextureDesc.usage = wgpu::TextureUsage::RenderAttachment;
+    depthTextureDesc.viewFormatCount = 1;
+    depthTextureDesc.viewFormats = &depthTextureFormat;
+    wgpu::Texture depthTexture = m_Device.CreateTexture(&depthTextureDesc);
+
+
+    wgpu::TextureViewDescriptor depthTextureViewDesc;
+    depthTextureViewDesc.aspect = wgpu::TextureAspect::DepthOnly;
+    depthTextureViewDesc.baseArrayLayer = 0;
+    depthTextureViewDesc.arrayLayerCount = 1;
+    depthTextureViewDesc.baseMipLevel = 0;
+    depthTextureViewDesc.mipLevelCount = 1;
+    depthTextureViewDesc.dimension = wgpu::TextureViewDimension::e2D;
+    depthTextureViewDesc.format = depthTextureFormat;
+    depthTextureView = depthTexture.CreateView(&depthTextureViewDesc);
+
 
     m_RenderPipeline = m_Device.CreateRenderPipeline(&pipelineDesc);
 }
