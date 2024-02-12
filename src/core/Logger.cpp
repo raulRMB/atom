@@ -70,7 +70,7 @@ namespace atom
         std::string outString = "[ERROR]: ";
         outString += buffer;
         std::cout << outString << std::endl;
-        delete[] buffer;
         assert(false);
+        delete[] buffer;
     }
 }

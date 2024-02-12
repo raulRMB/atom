@@ -14,6 +14,7 @@
 #include <glm/glm.hpp>
 #include <array>
 #include <cmath>
+#include "RenderUtil.h"
 
 namespace atom
 {
@@ -44,11 +45,6 @@ void Renderer::Init()
     SetupRenderPipeline();
 }
 
-wgpu::BindGroup bindGroup;
-wgpu::Buffer uniformBuffer;
-u32 uniformStride;
-wgpu::TextureFormat depthTextureFormat = wgpu::TextureFormat::Depth16Unorm;
-wgpu::TextureView depthTextureView;
 void Renderer::Draw()
 {
     wgpu::TextureView backBuffer = m_SwapChain.GetCurrentTextureView();
@@ -67,7 +63,7 @@ void Renderer::Draw()
     renderPassDesc.colorAttachments = &colorAttachment;
 
     wgpu::RenderPassDepthStencilAttachment depthStencilAttachment{};
-    depthStencilAttachment.view = depthTextureView;
+    depthStencilAttachment.view = m_DepthTextureView;
     depthStencilAttachment.depthClearValue = 1.0f;
     depthStencilAttachment.depthLoadOp = wgpu::LoadOp::Clear;
     depthStencilAttachment.depthStoreOp = wgpu::StoreOp::Store;
@@ -84,7 +80,7 @@ void Renderer::Draw()
 
     u32 dynamicOffset = 0;
 
-    renderPass.SetBindGroup(0, bindGroup, 1, &dynamicOffset);
+    renderPass.SetBindGroup(0, m_BindGroup, 1, &dynamicOffset);
 
     //float t = static_cast<float>(glfwGetTime());
     //MyUniforms uniforms;
@@ -96,8 +92,8 @@ void Renderer::Draw()
     const Render3dSystem& rend = System::Get<Render3dSystem>();
     rend.RenderFrame(renderPass);
 
-    dynamicOffset = uniformStride;
-    renderPass.SetBindGroup(0, bindGroup, 1, &dynamicOffset);
+    dynamicOffset = m_UniformStride;
+    renderPass.SetBindGroup(0, m_BindGroup, 1, &dynamicOffset);
 
     rend.RenderFrame(renderPass);
 
@@ -167,7 +163,7 @@ void Renderer::SetupDevice()
 
     wgpu::Limits deviceLimits = supportedLimits.limits;
 
-    uniformStride = CeilToNextMultiple(sizeof(MyUniforms), deviceLimits.minUniformBufferOffsetAlignment);
+    m_UniformStride = RenderUtil::CeilToNextMultiple(sizeof(MyUniforms), deviceLimits.minUniformBufferOffsetAlignment);
 
     wgpu::RequiredLimits requiredLimits = {};
     requiredLimits.limits.maxVertexAttributes = 2;
@@ -227,160 +223,181 @@ void Renderer::SetupSwapChain()
 
 void Renderer::SetupRenderPipeline()
 {
-    wgpu::ShaderModuleWGSLDescriptor shaderCodeDesc;
-    shaderCodeDesc.code = Reader::ReadTextFile("../../../assets/shaders/shader.wgsl");
+    RenderPipelineResources resources;
+    SetupShaderModules(resources, "../../../assets/shaders/shader.wgsl");
+    SetupPipelineProperties(resources);
+    SetupBindGroupLayout(resources);
+    SetupPipelineLayout(resources);
+    SetupVertexAttributes(resources);
+    SetupVertexBufferLayouts(resources);
+    SetupUniformBuffer(resources);
+    SetupDepthStencil(resources);
 
-    wgpu::ShaderModuleDescriptor shaderDesc = {};
-    #ifdef WEBGPU_BACKEND_WGPU
-    shaderDesc.hintCount = 0;
-    shaderDesc.hints = nullptr;
-    #endif
-    shaderDesc.nextInChain = &shaderCodeDesc;
-    wgpu::ShaderModule shaderModule = m_Device.CreateShaderModule(&shaderDesc);
-
-    wgpu::RenderPipelineDescriptor pipelineDesc = {};
-
-    pipelineDesc.vertex.bufferCount = 0;
-    pipelineDesc.vertex.buffers = nullptr;
-    pipelineDesc.vertex.module = shaderModule;
-    pipelineDesc.vertex.entryPoint = "vs_main";
-    pipelineDesc.vertex.constantCount = 0;
-    pipelineDesc.vertex.constants = nullptr;
-    pipelineDesc.primitive.topology = wgpu::PrimitiveTopology::TriangleList;
-    pipelineDesc.primitive.stripIndexFormat = wgpu::IndexFormat::Undefined;
-    pipelineDesc.primitive.frontFace = wgpu::FrontFace::CCW;
-    pipelineDesc.primitive.cullMode = wgpu::CullMode::None;
-
-    wgpu::FragmentState fragmentState;
-    fragmentState.module = shaderModule;
-    fragmentState.entryPoint = "fs_main";
-    fragmentState.constantCount = 0;
-    fragmentState.constants = nullptr;
-    pipelineDesc.fragment = &fragmentState;
-
-    wgpu::BlendState blendState;
-
-    wgpu::ColorTargetState colorTarget;
-    colorTarget.format = m_SwapChain.GetCurrentTexture().GetFormat();
-    colorTarget.blend = &blendState;
-    colorTarget.writeMask = wgpu::ColorWriteMask::All; // We could write to only some of the color channels.
-
-    fragmentState.targetCount = 1;
-    fragmentState.targets = &colorTarget;
-
-    blendState.color.srcFactor = wgpu::BlendFactor::SrcAlpha;
-    blendState.color.dstFactor = wgpu::BlendFactor::OneMinusSrcAlpha;
-    blendState.color.operation = wgpu::BlendOperation::Add;
-
-    pipelineDesc.multisample.count = 1;
-    pipelineDesc.multisample.mask = ~0u;
-    pipelineDesc.multisample.alphaToCoverageEnabled = false;
-
-    wgpu::BindGroupLayoutEntry bindingLayout{};
-    bindingLayout.binding = 0;
-    bindingLayout.buffer.hasDynamicOffset = true;
-    bindingLayout.visibility = wgpu::ShaderStage::Vertex | wgpu::ShaderStage::Fragment;
-    bindingLayout.buffer.type = wgpu::BufferBindingType::Uniform;
-    bindingLayout.buffer.minBindingSize = sizeof(MyUniforms);
-
-    wgpu::BindGroupLayoutDescriptor bindGroupLayoutDesc{};
-    bindGroupLayoutDesc.entryCount = 1;
-    bindGroupLayoutDesc.entries = &bindingLayout;
-    wgpu::BindGroupLayout bindGroupLayout = m_Device.CreateBindGroupLayout(&bindGroupLayoutDesc);
-
-    wgpu::PipelineLayoutDescriptor layoutDesc{};
-    layoutDesc.bindGroupLayoutCount = 1;
-    layoutDesc.bindGroupLayouts = &bindGroupLayout;
-    wgpu::PipelineLayout layout = m_Device.CreatePipelineLayout(&layoutDesc);
-    pipelineDesc.layout = layout;
-
-    std::vector<wgpu::VertexBufferLayout> vertexBufferLayouts(2);
-    wgpu::VertexAttribute positionAttrib{};
-
-    positionAttrib.shaderLocation = 0;
-    positionAttrib.format = wgpu::VertexFormat::Float32x3;
-    positionAttrib.offset = 0;
-
-    vertexBufferLayouts[0].attributeCount = 1;
-    vertexBufferLayouts[0].arrayStride = 3 * sizeof(float);
-    vertexBufferLayouts[0].attributes = &positionAttrib;
-    vertexBufferLayouts[0].stepMode = wgpu::VertexStepMode::Vertex;
-
-    wgpu::VertexAttribute colorAttrib{};
-
-    colorAttrib.shaderLocation = 1;
-    colorAttrib.format = wgpu::VertexFormat::Float32x4;
-    colorAttrib.offset = 0;
-
-    vertexBufferLayouts[1].attributeCount = 1;
-    vertexBufferLayouts[1].arrayStride = 4 * sizeof(float);
-    vertexBufferLayouts[1].attributes = &colorAttrib;
-    vertexBufferLayouts[1].stepMode = wgpu::VertexStepMode::Vertex;
-
-    pipelineDesc.vertex.bufferCount = static_cast<u32>(vertexBufferLayouts.size());
-    pipelineDesc.vertex.buffers = vertexBufferLayouts.data();
-
-    wgpu::BindGroupEntry bindGroupEntry{};
-    bindGroupEntry.binding = 0;
-    bindGroupEntry.buffer = uniformBuffer;
-    bindGroupEntry.offset = 0;
-    bindGroupEntry.size = sizeof(MyUniforms);
-
-    wgpu::BindGroupDescriptor bindGroupDesc{};
-    bindGroupDesc.layout = bindGroupLayout;
-    bindGroupDesc.entryCount = bindGroupLayoutDesc.entryCount;
-    bindGroupDesc.entries = &bindGroupEntry;
-    bindGroup = m_Device.CreateBindGroup(&bindGroupDesc);
-
-    wgpu::DepthStencilState depthStencilState{};
-    depthStencilState.depthWriteEnabled = true;
-    depthStencilState.depthCompare = wgpu::CompareFunction::Less;
-    depthStencilState.stencilReadMask = 0;
-    depthStencilState.stencilWriteMask = 0;
-    depthStencilState.format = depthTextureFormat;
-    pipelineDesc.depthStencil = &depthStencilState;
-
-    wgpu::TextureDescriptor depthTextureDesc;
-    depthTextureDesc.dimension = wgpu::TextureDimension::e2D;
-    depthTextureDesc.format = depthTextureFormat;
-    depthTextureDesc.mipLevelCount = 1;
-    depthTextureDesc.sampleCount = 1;
-    depthTextureDesc.size = { 640, 480, 1 };
-    depthTextureDesc.usage = wgpu::TextureUsage::RenderAttachment;
-    depthTextureDesc.viewFormatCount = 1;
-    depthTextureDesc.viewFormats = &depthTextureFormat;
-    wgpu::Texture depthTexture = m_Device.CreateTexture(&depthTextureDesc);
-
-
-    wgpu::TextureViewDescriptor depthTextureViewDesc;
-    depthTextureViewDesc.aspect = wgpu::TextureAspect::DepthOnly;
-    depthTextureViewDesc.baseArrayLayer = 0;
-    depthTextureViewDesc.arrayLayerCount = 1;
-    depthTextureViewDesc.baseMipLevel = 0;
-    depthTextureViewDesc.mipLevelCount = 1;
-    depthTextureViewDesc.dimension = wgpu::TextureViewDimension::e2D;
-    depthTextureViewDesc.format = depthTextureFormat;
-    depthTextureView = depthTexture.CreateView(&depthTextureViewDesc);
-
-
-    m_RenderPipeline = m_Device.CreateRenderPipeline(&pipelineDesc);
+    m_RenderPipeline = m_Device.CreateRenderPipeline(&resources.pipelineDesc);
 }
 
 void Renderer::SetupBuffers()
 {
     wgpu::BufferDescriptor bufferDesc{};
-    bufferDesc.size = uniformStride + sizeof(MyUniforms);
+    bufferDesc.size = m_UniformStride + sizeof(MyUniforms);
     bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Uniform;
     bufferDesc.mappedAtCreation = false;
-    uniformBuffer = m_Device.CreateBuffer(&bufferDesc);
+    m_UniformBuffer = m_Device.CreateBuffer(&bufferDesc);
     MyUniforms uniforms;
     uniforms.time = 1.0f;
     uniforms.color = { 0.0f, 0.0f, 1.0f, 1.0f };
-    m_Queue.WriteBuffer(uniformBuffer, 0, &uniforms, sizeof(MyUniforms));
+    m_Queue.WriteBuffer(m_UniformBuffer, 0, &uniforms, sizeof(MyUniforms));
 
     uniforms.time = -1.f;
     uniforms.color = { 1.0f, 0.0f, 1.0f, 1.0f };
-    m_Queue.WriteBuffer(uniformBuffer, uniformStride, &uniforms, sizeof(MyUniforms));
+    m_Queue.WriteBuffer(m_UniformBuffer, m_UniformStride, &uniforms, sizeof(MyUniforms));
+}
+
+void Renderer::SetupShaderModules(RenderPipelineResources& resources, const char* path)
+{
+    resources.shaderCodeDesc.code = Reader::ReadTextFile(path);
+
+#ifdef WEBGPU_BACKEND_WGPU
+    shaderDesc.hintCount = 0;
+    shaderDesc.hints = nullptr;
+#endif
+    resources.shaderDesc.nextInChain = &resources.shaderCodeDesc;
+    resources.shaderModule = m_Device.CreateShaderModule(&resources.shaderDesc);
+
+    resources.pipelineDesc.vertex.bufferCount = 0;
+    resources.pipelineDesc.vertex.buffers = nullptr;
+    resources.pipelineDesc.vertex.module = resources.shaderModule;
+    resources.pipelineDesc.vertex.entryPoint = "vs_main";
+    resources.pipelineDesc.vertex.constantCount = 0;
+    resources.pipelineDesc.vertex.constants = nullptr;
+
+    resources.fragmentState.module = resources.shaderModule;
+    resources.fragmentState.entryPoint = "fs_main";
+    resources.fragmentState.constantCount = 0;
+    resources.fragmentState.constants = nullptr;
+    resources.pipelineDesc.fragment = &resources.fragmentState;
+
+    resources.colorTarget.format = m_SwapChain.GetCurrentTexture().GetFormat();
+
+    resources.blendState.color.srcFactor = wgpu::BlendFactor::SrcAlpha;
+    resources.blendState.color.dstFactor = wgpu::BlendFactor::OneMinusSrcAlpha;
+    resources.blendState.color.operation = wgpu::BlendOperation::Add;
+
+    resources.colorTarget.blend = &resources.blendState;
+    resources.colorTarget.writeMask = wgpu::ColorWriteMask::All; // We could write to only some of the color channels.
+
+    resources.fragmentState.targetCount = 1;
+    resources.fragmentState.targets = &resources.colorTarget;
+}
+
+void Renderer::SetupPipelineProperties(RenderPipelineResources& resources)
+{
+    resources.pipelineDesc.multisample.count = 1;
+    resources.pipelineDesc.multisample.mask = ~0u;
+    resources.pipelineDesc.multisample.alphaToCoverageEnabled = false;
+
+    resources.pipelineDesc.primitive.topology = wgpu::PrimitiveTopology::TriangleList;
+    resources.pipelineDesc.primitive.stripIndexFormat = wgpu::IndexFormat::Undefined;
+    resources.pipelineDesc.primitive.frontFace = wgpu::FrontFace::CCW;
+    resources.pipelineDesc.primitive.cullMode = wgpu::CullMode::None;
+}
+
+void Renderer::SetupBindGroupLayout(RenderPipelineResources& resources)
+{
+    resources.bindingLayout.binding = 0;
+    resources.bindingLayout.buffer.hasDynamicOffset = true;
+    resources.bindingLayout.visibility = wgpu::ShaderStage::Vertex | wgpu::ShaderStage::Fragment;
+    resources.bindingLayout.buffer.type = wgpu::BufferBindingType::Uniform;
+    resources.bindingLayout.buffer.minBindingSize = sizeof(MyUniforms);
+    
+    resources.bindGroupLayoutDesc.entryCount = 1;
+    resources.bindGroupLayoutDesc.entries = &resources.bindingLayout;
+    resources.bindGroupLayout = m_Device.CreateBindGroupLayout(&resources.bindGroupLayoutDesc);
+}
+
+void Renderer::SetupPipelineLayout(RenderPipelineResources& resources)
+{
+    resources.pipelineLayoutDesc.bindGroupLayoutCount = 1;
+    resources.pipelineLayoutDesc.bindGroupLayouts = &resources.bindGroupLayout;
+    resources.pipelineLayout = m_Device.CreatePipelineLayout(&resources.pipelineLayoutDesc);
+    resources.pipelineDesc.layout = resources.pipelineLayout;
+}
+
+void Renderer::SetupVertexBufferLayouts(RenderPipelineResources& resources)
+{
+    resources.vertexBufferLayouts.resize(2, {});
+    
+    // Position attribute
+    resources.vertexBufferLayouts[0].attributeCount = 1;
+    resources.vertexBufferLayouts[0].arrayStride = 3 * sizeof(float);
+    resources.vertexBufferLayouts[0].attributes = &resources.vertexAttributes[0];
+    resources.vertexBufferLayouts[0].stepMode = wgpu::VertexStepMode::Vertex;
+
+    // Color attribute
+    resources.vertexBufferLayouts[1].attributeCount = 1;
+    resources.vertexBufferLayouts[1].arrayStride = 4 * sizeof(float);
+    resources.vertexBufferLayouts[1].attributes = &resources.vertexAttributes[1];
+    resources.vertexBufferLayouts[1].stepMode = wgpu::VertexStepMode::Vertex;
+
+    resources.pipelineDesc.vertex.bufferCount = static_cast<u32>(resources.vertexBufferLayouts.size());
+    resources.pipelineDesc.vertex.buffers = resources.vertexBufferLayouts.data();
+}
+
+void Renderer::SetupVertexAttributes(RenderPipelineResources& resources)
+{
+    resources.vertexAttributes.resize(2, {});
+
+    // Position attribute
+    resources.vertexAttributes[0].shaderLocation = 0;
+    resources.vertexAttributes[0].format = wgpu::VertexFormat::Float32x3;
+    resources.vertexAttributes[0].offset = 0;
+
+    // Color attribute
+    resources.vertexAttributes[1].shaderLocation = 1;
+    resources.vertexAttributes[1].format = wgpu::VertexFormat::Float32x4;
+    resources.vertexAttributes[1].offset = 0;
+}
+
+void Renderer::SetupUniformBuffer(RenderPipelineResources& resources)
+{
+    resources.bindGroupEntry.binding = 0;
+    resources.bindGroupEntry.buffer = m_UniformBuffer;
+    resources.bindGroupEntry.offset = 0;
+    resources.bindGroupEntry.size = sizeof(MyUniforms);
+
+    resources.bindGroupDesc.layout = resources.bindGroupLayout;
+    resources.bindGroupDesc.entryCount = resources.bindGroupLayoutDesc.entryCount;
+    resources.bindGroupDesc.entries = &resources.bindGroupEntry;
+    m_BindGroup = m_Device.CreateBindGroup(&resources.bindGroupDesc);
+}
+
+void Renderer::SetupDepthStencil(RenderPipelineResources& resources)
+{
+    resources.depthStencilState.depthWriteEnabled = true;
+    resources.depthStencilState.depthCompare = wgpu::CompareFunction::Less;
+    resources.depthStencilState.stencilReadMask = 0;
+    resources.depthStencilState.stencilWriteMask = 0;
+    resources.depthStencilState.format = m_DepthTextureFormat;
+    resources.pipelineDesc.depthStencil = &resources.depthStencilState;
+
+    resources.depthTextureDesc.dimension = wgpu::TextureDimension::e2D;
+    resources.depthTextureDesc.format = m_DepthTextureFormat;
+    resources.depthTextureDesc.mipLevelCount = 1;
+    resources.depthTextureDesc.sampleCount = 1;
+    resources.depthTextureDesc.size = { 640, 480, 1 };
+    resources.depthTextureDesc.usage = wgpu::TextureUsage::RenderAttachment;
+    resources.depthTextureDesc.viewFormatCount = 1;
+    resources.depthTextureDesc.viewFormats = &m_DepthTextureFormat;
+    resources.depthTexture = m_Device.CreateTexture(&resources.depthTextureDesc);
+
+    resources.depthTextureViewDesc.aspect = wgpu::TextureAspect::DepthOnly;
+    resources.depthTextureViewDesc.baseArrayLayer = 0;
+    resources.depthTextureViewDesc.arrayLayerCount = 1;
+    resources.depthTextureViewDesc.baseMipLevel = 0;
+    resources.depthTextureViewDesc.mipLevelCount = 1;
+    resources.depthTextureViewDesc.dimension = wgpu::TextureViewDimension::e2D;
+    resources.depthTextureViewDesc.format = m_DepthTextureFormat;
+    m_DepthTextureView = resources.depthTexture.CreateView(&resources.depthTextureViewDesc);
 }
 
 wgpu::Device& Renderer::GetDevice()
@@ -393,10 +410,4 @@ wgpu::Queue& Renderer::GetQueue()
     return m_Queue;
 }
 
-u32 Renderer::CeilToNextMultiple(u32 value, u32 step) const
-{
-    uint32_t divide_and_ceil = value / step + (value % step == 0 ? 0 : 1);
-    return step * divide_and_ceil;
-}
-
-}
+} // namespace atom

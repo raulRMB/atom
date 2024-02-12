@@ -11,6 +11,36 @@
 namespace atom
 {
 
+struct RenderPipelineResources
+{
+    wgpu::RenderPipelineDescriptor pipelineDesc{};
+    wgpu::ShaderModuleWGSLDescriptor shaderCodeDesc{};
+    wgpu::ShaderModuleDescriptor shaderDesc{};
+    wgpu::ShaderModule shaderModule{};
+    wgpu::FragmentState fragmentState{};
+    wgpu::ColorTargetState colorTarget{};
+    wgpu::BlendState blendState{};
+
+    wgpu::BindGroupLayoutEntry bindingLayout{};
+    wgpu::BindGroupLayoutDescriptor bindGroupLayoutDesc{};
+    wgpu::BindGroupLayout bindGroupLayout{};
+
+    wgpu::PipelineLayoutDescriptor pipelineLayoutDesc{};
+    wgpu::PipelineLayout pipelineLayout{};
+
+    std::vector<wgpu::VertexBufferLayout> vertexBufferLayouts{};
+    std::vector<wgpu::VertexAttribute> vertexAttributes{};
+
+    wgpu::BindGroupEntry bindGroupEntry{};
+    wgpu::BindGroupDescriptor bindGroupDesc{};
+
+    wgpu::DepthStencilState depthStencilState{};
+    wgpu::TextureDescriptor depthTextureDesc{};
+    wgpu::Texture depthTexture{};
+    wgpu::TextureViewDescriptor depthTextureViewDesc{};
+
+};
+
 class Renderer
 {
 private:
@@ -21,6 +51,12 @@ private:
     wgpu::Queue m_Queue;
     wgpu::SwapChain m_SwapChain;
     wgpu::RenderPipeline m_RenderPipeline;
+
+    wgpu::BindGroup m_BindGroup;
+    wgpu::Buffer m_UniformBuffer;
+    u32 m_UniformStride;
+    wgpu::TextureFormat m_DepthTextureFormat = wgpu::TextureFormat::Depth16Unorm;
+    wgpu::TextureView m_DepthTextureView;
 public:
     Renderer();
     ~Renderer();
@@ -39,10 +75,18 @@ public:
     void SetupRenderPipeline();
     void SetupBuffers();
 
+    void SetupShaderModules(RenderPipelineResources& resources, const char* path);
+    void SetupPipelineProperties(RenderPipelineResources& resources);
+    void SetupBindGroupLayout(RenderPipelineResources& resources);
+    void SetupPipelineLayout(RenderPipelineResources& resources);
+    void SetupVertexBufferLayouts(RenderPipelineResources& resources);
+    void SetupVertexAttributes(RenderPipelineResources& resources);
+    void SetupUniformBuffer(RenderPipelineResources& resources);
+    void SetupDepthStencil(RenderPipelineResources& resources);
+
     wgpu::Device& GetDevice();
     wgpu::Queue& GetQueue();
 
-    u32 CeilToNextMultiple(u32 value, u32 step) const;
 };
 
 }
