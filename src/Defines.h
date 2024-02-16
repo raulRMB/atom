@@ -6,6 +6,8 @@
 #define ATOM_DEFINES_H
 
 #include <cstdint>
+#include "glm/glm.hpp"
+#include "glm/ext/quaternion_common.hpp"
 
 using i8 = int8_t;
 using i16 = int16_t;
@@ -19,6 +21,15 @@ using u64 = uint64_t;
 
 using f32 = float;
 using f64 = double;
+
+using v2 = glm::vec2;
+using v3 = glm::vec3;
+using v4 = glm::vec4;
+
+using m3 = glm::mat3;
+using m4 = glm::mat4;
+
+using quat = glm::quat;
 
 #define ATOM_SUCCESS 0
 #define ATOM_FAILURE 1

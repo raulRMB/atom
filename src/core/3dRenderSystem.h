@@ -4,10 +4,10 @@
 namespace atom
 {
 
-class Render3dSystem : public System
+class SRender3d : public SSystem
 {
 public:
-	void RenderFrame(const wgpu::RenderPassEncoder& renderPass) const;
+	void RenderFrame(const wgpu::RenderPassEncoder& renderPass, wgpu::Queue& queue, const wgpu::Buffer& buffer) const;
 };
 
 } // namespace atom

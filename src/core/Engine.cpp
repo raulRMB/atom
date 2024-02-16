@@ -8,6 +8,8 @@
 #include "Window.h"
 #include "Logger.h"
 #include "Scene.h"
+#include "InputHandler.h"
+#include "Camera/SCamera.h"
 
 namespace atom
 {
@@ -56,6 +58,23 @@ i32 Engine::Init()
     m_pRenderer = Renderer::Create();
     m_pCurrentScene = new Scene();
 
+    m_pCurrentScene->AddUpdateSystem(new SCamera());
+
+
+    auto KeyCallback = [](GLFWwindow* window, i32 key, i32 scancode, i32 action, i32 mods)
+	{
+		InputHandler::GetInstance().HandleKeyInput(window, key, scancode, action, mods);
+	};
+    glfwSetKeyCallback(m_pWindow->GetWindow(), KeyCallback);
+
+    auto MouseCallback = [](GLFWwindow* window, f64 xpos, f64 ypos)
+    {
+        InputHandler::GetInstance().HandleMousePosChange(window, xpos, ypos);
+    };
+    glfwSetCursorPosCallback(m_pWindow->GetWindow(), MouseCallback);
+
+    //glfwSetInputMode(m_pWindow->GetWindow(), GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+
     return EXIT_SUCCESS;
 }
 
@@ -63,6 +82,11 @@ i32 Engine::MainLoop()
 {
     while(m_pWindow->PollEvents())
     {
+		m_CurrentFrameTime = glfwGetTime();
+		m_DeltaTime = m_CurrentFrameTime - m_LastFrameTime;
+		m_LastFrameTime = m_CurrentFrameTime;
+
+        m_pCurrentScene->Update(m_DeltaTime);
         m_pRenderer->Draw();
     }
 
@@ -91,6 +115,11 @@ Renderer* Engine::GetRenderer() const
 Scene* Engine::GetCurrentScene() const
 {
     return m_pCurrentScene;
+}
+
+entt::entity Engine::CreateEntity()
+{
+    return Instance().GetCurrentScene()->m_Registry.create();
 }
 
 wgpu::Device& Engine::GetDevice()

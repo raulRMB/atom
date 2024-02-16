@@ -11,21 +11,18 @@ struct CComponent
 
 };
 
-struct CTransform : public CComponent
-{
-	glm::vec3 Position;
-	glm::vec3 Rotation;
-	glm::vec3 Scale;
-};
-
 struct CMesh : public CComponent
 {
 	const char* Path;
 	i32 indexCount;
 	wgpu::Buffer positionBuffer;
 	std::vector<f32> pointData{};
+	wgpu::Buffer normalBuffer;
+	std::vector<f32> normalData{};
 	wgpu::Buffer colorBuffer;
 	std::vector<f32> colorData{};
+	wgpu::Buffer uvBuffer;
+	std::vector<f32> uvData{};
 
 	wgpu::Buffer indexBuffer;
 	std::vector<u16> indexData{};

@@ -11,6 +11,13 @@
 namespace atom
 {
 
+struct MyUniforms
+{
+	m4 m_Model;
+	m4 m_View;
+	m4 m_Projection;
+};
+
 struct RenderPipelineResources
 {
     wgpu::RenderPipelineDescriptor pipelineDesc{};
@@ -21,7 +28,7 @@ struct RenderPipelineResources
     wgpu::ColorTargetState colorTarget{};
     wgpu::BlendState blendState{};
 
-    wgpu::BindGroupLayoutEntry bindingLayout{};
+    std::vector<wgpu::BindGroupLayoutEntry> bindingLayoutEntries{};
     wgpu::BindGroupLayoutDescriptor bindGroupLayoutDesc{};
     wgpu::BindGroupLayout bindGroupLayout{};
 
@@ -31,13 +38,17 @@ struct RenderPipelineResources
     std::vector<wgpu::VertexBufferLayout> vertexBufferLayouts{};
     std::vector<wgpu::VertexAttribute> vertexAttributes{};
 
-    wgpu::BindGroupEntry bindGroupEntry{};
+    std::vector<wgpu::BindGroupEntry> bindGroupEntry{};
     wgpu::BindGroupDescriptor bindGroupDesc{};
 
     wgpu::DepthStencilState depthStencilState{};
     wgpu::TextureDescriptor depthTextureDesc{};
     wgpu::Texture depthTexture{};
     wgpu::TextureViewDescriptor depthTextureViewDesc{};
+
+    wgpu::Texture texture{};
+    wgpu::TextureDescriptor textureDesc{};
+    wgpu::TextureView textureView{};
 
 };
 
@@ -83,6 +94,7 @@ public:
     void SetupVertexAttributes(RenderPipelineResources& resources);
     void SetupUniformBuffer(RenderPipelineResources& resources);
     void SetupDepthStencil(RenderPipelineResources& resources);
+    void SetupTexture(RenderPipelineResources& resources);
 
     wgpu::Device& GetDevice();
     wgpu::Queue& GetQueue();

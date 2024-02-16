@@ -35,11 +35,22 @@ private:
     class Renderer* m_pRenderer;
     class Scene* m_pCurrentScene;
 
+    f64 m_CurrentFrameTime;
+    f64 m_LastFrameTime;
+    f64 m_DeltaTime;
 public:
     [[nodiscard]] Window* GetWindow() const;
     GLFWwindow* GetGLFWWindow();
     [[nodiscard]] Renderer* GetRenderer() const;
     class Scene* GetCurrentScene() const;
+
+    static entt::entity CreateEntity();
+    
+    template<typename C>
+    static void AddComponent(const entt::entity entity, C component)
+	{
+		Instance().GetCurrentScene()->m_Registry.emplace<C>(entity, component);
+	}
 
     template<typename ...T>
     static auto GetView()
@@ -48,7 +59,7 @@ public:
     }
 
     template <typename T>
-    static T& GetComponent(const entt::entity& entity) 
+    static T& GetComponent(const entt::entity entity) 
     { 
         return Instance().GetCurrentScene()->m_Registry.get<T>(entity);
     }

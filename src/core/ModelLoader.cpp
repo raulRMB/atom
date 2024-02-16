@@ -68,6 +68,35 @@ CMesh ModelLoader::LoadMesh(const char* path, EModelImportType modelType)
 				meshComponent.pointData.push_back(((float*)positionData)[i + 2]);
 			}
 
+            const tinygltf::Accessor& normalAccessor = model.accessors[primitive.attributes.at("NORMAL")];
+            const tinygltf::BufferView& normalView = model.bufferViews[normalAccessor.bufferView];
+            const tinygltf::Buffer& normalBuffer = model.buffers[normalView.buffer];
+
+            const void* normalData = &normalBuffer.data[normalView.byteOffset + normalAccessor.byteOffset];
+            const u32 normalCount = static_cast<u32>(normalAccessor.count);
+
+            meshComponent.normalData.reserve(normalCount * 3);
+            for (u32 i = 0; i < normalCount * 3; i += 3)
+            {
+				meshComponent.normalData.push_back(((float*)normalData)[i + 0]);
+				meshComponent.normalData.push_back(((float*)normalData)[i + 1]);
+				meshComponent.normalData.push_back(((float*)normalData)[i + 2]);
+			}
+
+            const tinygltf::Accessor& uvAccessor = model.accessors[primitive.attributes.at("TEXCOORD_0")];
+            const tinygltf::BufferView& uvView = model.bufferViews[uvAccessor.bufferView];
+            const tinygltf::Buffer& uvBuffer = model.buffers[uvView.buffer];
+
+            const void* uvData = &uvBuffer.data[uvView.byteOffset + uvAccessor.byteOffset];
+            const u32 uvCount = static_cast<u32>(uvAccessor.count);
+
+            meshComponent.uvData.reserve(uvCount * 2);
+            for (u32 i = 0; i < uvCount * 2; i += 2)
+            {
+				meshComponent.uvData.push_back(((float*)uvData)[i + 0]);
+				meshComponent.uvData.push_back(((float*)uvData)[i + 1]);
+			}
+
             /*const tinygltf::Accessor& uvAccessor = model.accessors[primitive.attributes.at("COLOR")];
             const tinygltf::BufferView& uvView = model.bufferViews[uvAccessor.bufferView];
             const tinygltf::Buffer& uvBuffer = model.buffers[uvView.buffer];*/
@@ -80,7 +109,7 @@ CMesh ModelLoader::LoadMesh(const char* path, EModelImportType modelType)
                 vertex = ((float*)positionData)[i + 0] * 0.01f;
             }*/
 
-            
+            meshComponent.colorData.reserve(vertexCount * 4);
             for (u32 i = 0; i < vertexCount * 4; i += 4)
             {
 				meshComponent.colorData.push_back(1.0f);
@@ -101,10 +130,20 @@ CMesh ModelLoader::LoadMesh(const char* path, EModelImportType modelType)
     meshComponent.positionBuffer = Engine::GetDevice().CreateBuffer(&bufferDesc);
 	Engine::GetQueue().WriteBuffer(meshComponent.positionBuffer, 0, meshComponent.pointData.data(), bufferDesc.size);
 
+    bufferDesc.label = "Normal Buffer";
+    bufferDesc.size = (meshComponent.normalData.size() * sizeof(f32) + 3) & ~3;
+    meshComponent.normalBuffer = Engine::GetDevice().CreateBuffer(&bufferDesc);
+    Engine::GetQueue().WriteBuffer(meshComponent.normalBuffer, 0, meshComponent.normalData.data(), bufferDesc.size);
+
 	bufferDesc.size = (meshComponent.colorData.size() * sizeof(f32) + 3) & ~3;
     bufferDesc.label = "Color Buffer";
     meshComponent.colorBuffer = Engine::GetDevice().CreateBuffer(&bufferDesc);
 	Engine::GetQueue().WriteBuffer(meshComponent.colorBuffer, 0, meshComponent.colorData.data(), bufferDesc.size);
+
+	bufferDesc.label = "UV Buffer";
+	bufferDesc.size = (meshComponent.uvData.size() * sizeof(f32) + 3) & ~3;
+	meshComponent.uvBuffer = Engine::GetDevice().CreateBuffer(&bufferDesc);
+	Engine::GetQueue().WriteBuffer(meshComponent.uvBuffer, 0, meshComponent.uvData.data(), bufferDesc.size);
 
 	bufferDesc.size = (meshComponent.indexData.size() * sizeof(u16) + 3) & ~3;
     bufferDesc.label = "Index Buffer";
