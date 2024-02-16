@@ -18,13 +18,14 @@ struct MyUniforms {
     proj : mat4x4<f32>
 }
 
-@group(0) @binding(0) var<uniform> uMyUniforms: MyUniforms;
-@group(0) @binding(1) var gradientTexture: texture_2d<f32>;
+@group(0) @binding(0) var<uniform> u_uniforms: MyUniforms;
+@group(0) @binding(1) var texture: texture_2d<f32>;
+@group(0) @binding(2) var texture_sampler: sampler;
 
 @vertex
 fn vs_main(in: VertexInput) -> VertexOutput {
     var out: VertexOutput;
-    out.position = uMyUniforms.proj * uMyUniforms.view * uMyUniforms.model * vec4f(in.position, 1.0);
+    out.position = u_uniforms.proj * u_uniforms.view * u_uniforms.model * vec4f(in.position, 1.0);
     out.normal = in.normal;
     out.uv = in.uv;
     out.color = in.color;
@@ -33,9 +34,8 @@ fn vs_main(in: VertexInput) -> VertexOutput {
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4f {
-    let texelCoords = vec2i(in.uv * vec2f(textureDimensions(gradientTexture)));
-    let color = textureLoad(gradientTexture, texelCoords, 0).rgb;
+    let texel_coords = vec2i(in.uv * vec2f(textureDimensions(texture)));
+    let color = textureSample(texture, texture_sampler, in.uv).rgb;
     
-    //return vec4f(1.0);
     return vec4f(color.xyz, 1.0) * in.color;
 }

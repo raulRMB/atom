@@ -50,6 +50,9 @@ struct RenderPipelineResources
     wgpu::TextureDescriptor textureDesc{};
     wgpu::TextureView textureView{};
 
+    wgpu::SamplerDescriptor samplerDesc{};
+    wgpu::Sampler sampler{};
+
 };
 
 class Renderer
@@ -95,6 +98,8 @@ public:
     void SetupUniformBuffer(RenderPipelineResources& resources);
     void SetupDepthStencil(RenderPipelineResources& resources);
     void SetupTexture(RenderPipelineResources& resources);
+    void LoadTexture(RenderPipelineResources& resources);
+	void SetupSampler(RenderPipelineResources& resources);
 
     wgpu::Device& GetDevice();
     wgpu::Queue& GetQueue();

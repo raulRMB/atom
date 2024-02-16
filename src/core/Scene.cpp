@@ -2,7 +2,7 @@
 #include "Components.h"
 #include "Logger.h"
 #include "Engine.h"
-#include "ModelLoader.h"
+#include "ResourceLoader.h"
 #include "Camera/CCamera.h"
 #include "Camera/SCamera.h"
 #include "CTransfrom.h"
@@ -15,28 +15,28 @@
 namespace atom
 {
 
-	Scene::Scene()
+Scene::Scene()
+{
+	CMesh mesh = ResourceLoader::LoadMesh("../../../assets/models/su.glb", EModelImportType::glb);
+
+	entt::entity ent = m_Registry.create();
+	CTransform transform{};
+	transform.Position = glm::vec3(0.f, 0.0f, 0.f);
+	m_Registry.emplace<CTransform>(ent, transform);
+	m_Registry.emplace<CMesh>(ent, mesh);
+
+	/*for (i32 i = 0; i < 10; i++)
 	{
-		CMesh mesh = ModelLoader::LoadMesh("../../../assets/models/su.glb", EModelImportType::glb);
-
-		entt::entity ent = m_Registry.create();
-		CTransform transform{};
-		transform.Position = glm::vec3(0.f, 0.0f, 0.f);
-		m_Registry.emplace<CTransform>(ent, transform);
-		m_Registry.emplace<CMesh>(ent, mesh);
-
-		/*for (i32 i = 0; i < 10; i++)
+		for (i32 j = 0; j < 10; j++)
 		{
-			for (i32 j = 0; j < 10; j++)
-			{
-				entt::entity ent = m_Registry.create();
-				CTransform transform{};
-				transform.Position = glm::vec3(i * 0.5f, 0.0f, j * 0.5f);
-				m_Registry.emplace<CTransform>(ent, transform);
-				m_Registry.emplace<CMesh>(ent, mesh);
-			}
-		}*/
-	}
+			entt::entity ent = m_Registry.create();
+			CTransform transform{};
+			transform.Position = glm::vec3(i * 0.5f, 0.0f, j * 0.5f);
+			m_Registry.emplace<CTransform>(ent, transform);
+			m_Registry.emplace<CMesh>(ent, mesh);
+		}
+	}*/
+}
 
 void Scene::Update(f32 dt)
 {

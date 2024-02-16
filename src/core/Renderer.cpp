@@ -17,6 +17,8 @@
 #include "RenderUtil.h"
 #include "Camera/CCamera.h"
 
+#include "ResourceLoader.h"
+
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #define GLM_FORCE_LEFT_HANDED
 #include <glm/ext.hpp>
@@ -197,9 +199,11 @@ void Renderer::SetupDevice()
 
     requiredLimits.limits.maxDynamicUniformBuffersPerPipelineLayout = 1;
 
-    requiredLimits.limits.maxTextureDimension1D = 480;
-    requiredLimits.limits.maxTextureDimension2D = 640;
+    requiredLimits.limits.maxTextureDimension1D = 2048;
+    requiredLimits.limits.maxTextureDimension2D = 2048;
     requiredLimits.limits.maxTextureArrayLayers = 1;
+
+    requiredLimits.limits.maxSamplersPerShaderStage = 1;
 
     deviceDesc.requiredLimits = &requiredLimits;
     m_Device = wgpu::atom::RequestDevice(m_Adapter, &deviceDesc);
@@ -247,7 +251,9 @@ void Renderer::SetupRenderPipeline()
     SetupPipelineLayout(resources);
     SetupVertexAttributes(resources);
     SetupVertexBufferLayouts(resources);
-    SetupTexture(resources);
+    //SetupTexture(resources);
+    LoadTexture(resources);
+    SetupSampler(resources);
     SetupUniformBuffer(resources);
     SetupDepthStencil(resources);
 
@@ -316,7 +322,7 @@ void Renderer::SetupPipelineProperties(RenderPipelineResources& resources)
 
 void Renderer::SetupBindGroupLayout(RenderPipelineResources& resources)
 {
-    resources.bindingLayoutEntries.resize(2, {});
+    resources.bindingLayoutEntries.resize(3, {});
 
     resources.bindingLayoutEntries[0].binding = 0;
     resources.bindingLayoutEntries[0].buffer.hasDynamicOffset = false;
@@ -330,6 +336,10 @@ void Renderer::SetupBindGroupLayout(RenderPipelineResources& resources)
     resources.bindingLayoutEntries[1].texture.viewDimension = wgpu::TextureViewDimension::e2D;
     resources.bindingLayoutEntries[1].texture.multisampled = false;
     
+    resources.bindingLayoutEntries[2].binding = 2;
+    resources.bindingLayoutEntries[2].visibility = wgpu::ShaderStage::Fragment;
+    resources.bindingLayoutEntries[2].sampler.type = wgpu::SamplerBindingType::Filtering;
+
     resources.bindGroupLayoutDesc.entryCount = resources.bindingLayoutEntries.size();
     resources.bindGroupLayoutDesc.entries = resources.bindingLayoutEntries.data();
     resources.bindGroupLayout = m_Device.CreateBindGroupLayout(&resources.bindGroupLayoutDesc);
@@ -402,7 +412,7 @@ void Renderer::SetupVertexAttributes(RenderPipelineResources& resources)
 
 void Renderer::SetupUniformBuffer(RenderPipelineResources& resources)
 {
-    resources.bindGroupEntry.resize(2, {});
+    resources.bindGroupEntry.resize(3, {});
 
     resources.bindGroupEntry[0].binding = 0;
     resources.bindGroupEntry[0].buffer = m_UniformBuffer;
@@ -411,6 +421,9 @@ void Renderer::SetupUniformBuffer(RenderPipelineResources& resources)
 
     resources.bindGroupEntry[1].binding = 1;
     resources.bindGroupEntry[1].textureView = resources.textureView;
+
+    resources.bindGroupEntry[2].binding = 2;
+    resources.bindGroupEntry[2].sampler = resources.sampler;
 
     resources.bindGroupDesc.layout = resources.bindGroupLayout;
     resources.bindGroupDesc.entryCount = (u32)resources.bindGroupEntry.size();
@@ -492,8 +505,31 @@ void Renderer::SetupTexture(RenderPipelineResources& resources)
     source.bytesPerRow = 4 * textureDesc.size.width;
     source.rowsPerImage = textureDesc.size.height;
 
-
     m_Queue.WriteTexture(&destination, pixels.data(), pixels.size(), &source, &textureDesc.size);
+}
+
+void Renderer::LoadTexture(RenderPipelineResources& resources)
+{
+    resources.texture = ResourceLoader::LoadTexture("../../../assets/textures/bricks.png", m_Device, &resources.textureView);
+	if (!resources.texture)
+    {
+        LogError("Could not load texture!");
+	}
+}
+
+void Renderer::SetupSampler(RenderPipelineResources& resources)
+{
+    resources.samplerDesc.addressModeU = wgpu::AddressMode::ClampToEdge;
+	resources.samplerDesc.addressModeV = wgpu::AddressMode::ClampToEdge;
+	resources.samplerDesc.addressModeW = wgpu::AddressMode::ClampToEdge;
+	resources.samplerDesc.magFilter = wgpu::FilterMode::Linear;
+	resources.samplerDesc.minFilter = wgpu::FilterMode::Linear;
+	resources.samplerDesc.mipmapFilter = wgpu::MipmapFilterMode::Linear;
+	resources.samplerDesc.lodMinClamp = 0.0f;
+	resources.samplerDesc.lodMaxClamp = 1.0f;
+	resources.samplerDesc.compare = wgpu::CompareFunction::Undefined;
+	resources.samplerDesc.maxAnisotropy = 1;
+	resources.sampler = m_Device.CreateSampler(&resources.samplerDesc);
 }
 
 wgpu::Device& Renderer::GetDevice()
