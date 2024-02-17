@@ -10,6 +10,8 @@ namespace atom
 
 void SRender3d::RenderFrame(const wgpu::RenderPassEncoder& renderPass, wgpu::Queue& queue, const wgpu::Buffer& buffer) const
 {
+	// Engine::GetComponent<CTransform>(Engine::GetMainCamera()).Position;
+
     for (auto& entity : Engine::GetView<CMesh, CTransform>())
     {
 		auto& mesh = Engine::GetComponent<CMesh>(entity);
@@ -32,7 +34,10 @@ void SRender3d::RenderFrame(const wgpu::RenderPassEncoder& renderPass, wgpu::Que
 		MyUniforms uniforms;
 		m4 model = m4(1.0f);
 		model = glm::translate(model, glm::vec3(pos.x, 0.0f, pos.z));
+		// model = glm::rotate(model, glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
 		uniforms.m_Model = model;
+
+		// uniforms.m_CameraPosition = Engine::GetMainCameraPosition();
 
 		queue.WriteBuffer(buffer, 0, &uniforms, sizeof(MyUniforms::m_Model));
 

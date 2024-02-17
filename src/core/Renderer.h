@@ -16,6 +16,8 @@ struct MyUniforms
 	m4 m_Model;
 	m4 m_View;
 	m4 m_Projection;
+    v3 m_CameraPosition;
+    f32 m_padding;
 };
 
 struct RenderPipelineResources
@@ -46,13 +48,20 @@ struct RenderPipelineResources
     wgpu::Texture depthTexture{};
     wgpu::TextureViewDescriptor depthTextureViewDesc{};
 
-    wgpu::Texture texture{};
-    wgpu::TextureDescriptor textureDesc{};
-    wgpu::TextureView textureView{};
+    wgpu::Texture baseColorTexture{};
+    wgpu::TextureView baseColorTextureView{};
+
+    wgpu::Texture normalTexture{};
+    wgpu::TextureView normalTextureView{};
+
+    wgpu::Texture roughnessTexture{};
+    wgpu::TextureView roughnessTextureView{};
+
+    wgpu::Texture metallicTexture{};
+    wgpu::TextureView metallicTextureView{};
 
     wgpu::SamplerDescriptor samplerDesc{};
     wgpu::Sampler sampler{};
-
 };
 
 class Renderer
@@ -98,7 +107,7 @@ public:
     void SetupUniformBuffer(RenderPipelineResources& resources);
     void SetupDepthStencil(RenderPipelineResources& resources);
     void SetupTexture(RenderPipelineResources& resources);
-    void LoadTexture(RenderPipelineResources& resources);
+    void LoadTextures(RenderPipelineResources& resources);
 	void SetupSampler(RenderPipelineResources& resources);
 
     wgpu::Device& GetDevice();

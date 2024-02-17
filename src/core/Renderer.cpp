@@ -252,7 +252,7 @@ void Renderer::SetupRenderPipeline()
     SetupVertexAttributes(resources);
     SetupVertexBufferLayouts(resources);
     //SetupTexture(resources);
-    LoadTexture(resources);
+    LoadTextures(resources);
     SetupSampler(resources);
     SetupUniformBuffer(resources);
     SetupDepthStencil(resources);
@@ -322,7 +322,7 @@ void Renderer::SetupPipelineProperties(RenderPipelineResources& resources)
 
 void Renderer::SetupBindGroupLayout(RenderPipelineResources& resources)
 {
-    resources.bindingLayoutEntries.resize(3, {});
+    resources.bindingLayoutEntries.resize(6, {});
 
     resources.bindingLayoutEntries[0].binding = 0;
     resources.bindingLayoutEntries[0].buffer.hasDynamicOffset = false;
@@ -330,15 +330,33 @@ void Renderer::SetupBindGroupLayout(RenderPipelineResources& resources)
     resources.bindingLayoutEntries[0].buffer.type = wgpu::BufferBindingType::Uniform;
     resources.bindingLayoutEntries[0].buffer.minBindingSize = sizeof(MyUniforms);
 
-    resources.bindingLayoutEntries[1].binding = 1;
-    resources.bindingLayoutEntries[1].visibility = wgpu::ShaderStage::Fragment;
-    resources.bindingLayoutEntries[1].texture.sampleType = wgpu::TextureSampleType::Float;
-    resources.bindingLayoutEntries[1].texture.viewDimension = wgpu::TextureViewDimension::e2D;
-    resources.bindingLayoutEntries[1].texture.multisampled = false;
-    
-    resources.bindingLayoutEntries[2].binding = 2;
-    resources.bindingLayoutEntries[2].visibility = wgpu::ShaderStage::Fragment;
-    resources.bindingLayoutEntries[2].sampler.type = wgpu::SamplerBindingType::Filtering;
+	resources.bindingLayoutEntries[1].binding = 1;
+	resources.bindingLayoutEntries[1].visibility = wgpu::ShaderStage::Fragment;
+	resources.bindingLayoutEntries[1].sampler.type = wgpu::SamplerBindingType::Filtering;
+
+	resources.bindingLayoutEntries[2].binding = 2;
+	resources.bindingLayoutEntries[2].visibility = wgpu::ShaderStage::Fragment;
+	resources.bindingLayoutEntries[2].texture.sampleType = wgpu::TextureSampleType::Float;
+	resources.bindingLayoutEntries[2].texture.viewDimension = wgpu::TextureViewDimension::e2D;
+	resources.bindingLayoutEntries[2].texture.multisampled = false;
+
+    resources.bindingLayoutEntries[3].binding = 3;
+    resources.bindingLayoutEntries[3].visibility = wgpu::ShaderStage::Fragment;
+    resources.bindingLayoutEntries[3].texture.sampleType = wgpu::TextureSampleType::Float;
+    resources.bindingLayoutEntries[3].texture.viewDimension = wgpu::TextureViewDimension::e2D;
+    resources.bindingLayoutEntries[3].texture.multisampled = false;
+
+    resources.bindingLayoutEntries[4].binding = 4;
+    resources.bindingLayoutEntries[4].visibility = wgpu::ShaderStage::Fragment;
+    resources.bindingLayoutEntries[4].texture.sampleType = wgpu::TextureSampleType::Float;
+    resources.bindingLayoutEntries[4].texture.viewDimension = wgpu::TextureViewDimension::e2D;
+    resources.bindingLayoutEntries[4].texture.multisampled = false;
+
+    resources.bindingLayoutEntries[5].binding = 5;
+    resources.bindingLayoutEntries[5].visibility = wgpu::ShaderStage::Fragment;
+    resources.bindingLayoutEntries[5].texture.sampleType = wgpu::TextureSampleType::Float;
+    resources.bindingLayoutEntries[5].texture.viewDimension = wgpu::TextureViewDimension::e2D;
+    resources.bindingLayoutEntries[5].texture.multisampled = false; 
 
     resources.bindGroupLayoutDesc.entryCount = resources.bindingLayoutEntries.size();
     resources.bindGroupLayoutDesc.entries = resources.bindingLayoutEntries.data();
@@ -412,18 +430,27 @@ void Renderer::SetupVertexAttributes(RenderPipelineResources& resources)
 
 void Renderer::SetupUniformBuffer(RenderPipelineResources& resources)
 {
-    resources.bindGroupEntry.resize(3, {});
+    resources.bindGroupEntry.resize(6, {});
 
     resources.bindGroupEntry[0].binding = 0;
     resources.bindGroupEntry[0].buffer = m_UniformBuffer;
     resources.bindGroupEntry[0].offset = 0;
     resources.bindGroupEntry[0].size = sizeof(MyUniforms);
 
-    resources.bindGroupEntry[1].binding = 1;
-    resources.bindGroupEntry[1].textureView = resources.textureView;
+	resources.bindGroupEntry[1].binding = 1;
+	resources.bindGroupEntry[1].sampler = resources.sampler;
 
-    resources.bindGroupEntry[2].binding = 2;
-    resources.bindGroupEntry[2].sampler = resources.sampler;
+	resources.bindGroupEntry[2].binding = 2;
+	resources.bindGroupEntry[2].textureView = resources.baseColorTextureView;
+
+    resources.bindGroupEntry[3].binding = 3;
+    resources.bindGroupEntry[3].textureView = resources.normalTextureView;
+
+    resources.bindGroupEntry[4].binding = 4;
+    resources.bindGroupEntry[4].textureView = resources.roughnessTextureView;
+
+    resources.bindGroupEntry[5].binding = 5;
+    resources.bindGroupEntry[5].textureView = resources.metallicTextureView;
 
     resources.bindGroupDesc.layout = resources.bindGroupLayout;
     resources.bindGroupDesc.entryCount = (u32)resources.bindGroupEntry.size();
@@ -462,7 +489,7 @@ void Renderer::SetupDepthStencil(RenderPipelineResources& resources)
 
 void Renderer::SetupTexture(RenderPipelineResources& resources)
 {
-    wgpu::TextureDescriptor& textureDesc = resources.textureDesc;
+    wgpu::TextureDescriptor textureDesc{};
     textureDesc.dimension = wgpu::TextureDimension::e2D;
     textureDesc.size = { 256, 256, 1 };
     textureDesc.mipLevelCount = 1;
@@ -483,7 +510,7 @@ void Renderer::SetupTexture(RenderPipelineResources& resources)
 		}
 	}
 
-    resources.texture = m_Device.CreateTexture(&textureDesc);
+    resources.baseColorTexture = m_Device.CreateTexture(&textureDesc);
 
     wgpu::TextureViewDescriptor textureViewDesc{};
     textureViewDesc.dimension = wgpu::TextureViewDimension::e2D;
@@ -492,10 +519,10 @@ void Renderer::SetupTexture(RenderPipelineResources& resources)
     textureViewDesc.mipLevelCount = 1;
     textureViewDesc.baseArrayLayer = 0;
     textureViewDesc.arrayLayerCount = 1;
-    resources.textureView = resources.texture.CreateView(&textureViewDesc);
+    resources.baseColorTextureView = resources.baseColorTexture.CreateView(&textureViewDesc);
 
 	wgpu::ImageCopyTexture destination{};
-    destination.texture = resources.texture;
+    destination.texture = resources.baseColorTexture;
     destination.mipLevel = 0;
     destination.origin = { 0, 0, 0 };
     destination.aspect = wgpu::TextureAspect::All;
@@ -508,12 +535,30 @@ void Renderer::SetupTexture(RenderPipelineResources& resources)
     m_Queue.WriteTexture(&destination, pixels.data(), pixels.size(), &source, &textureDesc.size);
 }
 
-void Renderer::LoadTexture(RenderPipelineResources& resources)
+void Renderer::LoadTextures(RenderPipelineResources& resources)
 {
-    resources.texture = ResourceLoader::LoadTexture("../../../assets/textures/bricks.png", m_Device, &resources.textureView);
-	if (!resources.texture)
+    resources.baseColorTexture = ResourceLoader::LoadTexture("../../../assets/textures/bricks_base_color.png", m_Device, &resources.baseColorTextureView);
+	if (!resources.baseColorTexture)
     {
         LogError("Could not load texture!");
+	}
+    
+	resources.normalTexture = ResourceLoader::LoadTexture("../../../assets/textures/bricks_normal.png", m_Device, &resources.normalTextureView);
+    if (!resources.normalTexture)
+    {
+		LogError("Could not load texture!");
+	}
+
+    resources.roughnessTexture = ResourceLoader::LoadTexture("../../../assets/textures/bricks_roughness.png", m_Device, &resources.roughnessTextureView);
+    if (!resources.roughnessTexture)
+    {
+		LogError("Could not load texture!");
+	}
+    
+    resources.metallicTexture = ResourceLoader::LoadTexture("../../../assets/textures/bricks_metalic.png", m_Device, &resources.metallicTextureView);
+    if (!resources.metallicTexture)
+    {
+		LogError("Could not load texture!");
 	}
 }
 

@@ -4,6 +4,7 @@
 
 namespace atom
 {
+
 InputHandler& InputHandler::GetInstance()
 {
 	static InputHandler instance;
