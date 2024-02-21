@@ -16,7 +16,7 @@ SCamera::SCamera() : m_MovementFlags(0), m_CameraEntity(entt::null)
 	m_CameraEntity = Engine::CreateEntity();
 
 	CTransform transform{};
-	transform.Position = { 0.0f, 0.0f, 15.0f };
+	transform.Position = { 0.0f, 0.0f, 3.0f };
 	transform.Rotation = { 0.0f, 0.0f, 0.0f };
 	transform.Scale = { 1.0f, 1.0f, 1.0f };	
 
@@ -29,8 +29,8 @@ SCamera::SCamera() : m_MovementFlags(0), m_CameraEntity(entt::null)
 	cam.Forward = v3(0.0f, 0.0f, -1.0f);
 	cam.Right = v3(1.0f, 0.0f, 0.0f);
 	cam.Up = v3(0.0f, 1.0f, 0.0f);
-	cam.Pitch = 0.0f;
-	cam.Yaw = 0.0f;
+	cam.Pitch = -180.f;
+	cam.Yaw = 90.0f;
 	cam.Roll = 0.0f;
 	cam.Projection = glm::perspective(glm::radians(cam.FOV), 640.0f / 480.0f, cam.Near, cam.Far);
 	//cam.View = glm::lookAt(transform.Position, transform.Position + cam.Forward, cam.Up);
@@ -42,10 +42,15 @@ SCamera::SCamera() : m_MovementFlags(0), m_CameraEntity(entt::null)
 	InputHandler::RegisterOnKeyPressed<&SCamera::MoveCameraBackward>(KeyCode::S, this);
 	InputHandler::RegisterOnKeyPressed<&SCamera::MoveCameraLeft>(KeyCode::A, this);
 	InputHandler::RegisterOnKeyPressed<&SCamera::MoveCameraRight>(KeyCode::D, this);
-	InputHandler::RegisterOnKeyReleased<&SCamera::StopCameraForward>(KeyCode::W, this);
+	InputHandler::RegisterOnKeyPressed<&SCamera::MoveCameraUp>(KeyCode::Space, this);
+    InputHandler::RegisterOnKeyPressed<&SCamera::MoveCameraDown>(KeyCode::LeftControl, this);
+
+    InputHandler::RegisterOnKeyReleased<&SCamera::StopCameraForward>(KeyCode::W, this);
 	InputHandler::RegisterOnKeyReleased<&SCamera::StopCameraBackward>(KeyCode::S, this);
 	InputHandler::RegisterOnKeyReleased<&SCamera::StopCameraLeft>(KeyCode::A, this);
 	InputHandler::RegisterOnKeyReleased<&SCamera::StopCameraRight>(KeyCode::D, this);
+    InputHandler::RegisterOnKeyReleased<&SCamera::StopCameraUp>(KeyCode::Space, this);
+    InputHandler::RegisterOnKeyReleased<&SCamera::StopCameraDown>(KeyCode::LeftControl, this);
 
 	//InputHandler::RegisterOnMouseMovedDeltaVector<&SCamera::OnMouseMoved>(this);
 }
@@ -71,6 +76,14 @@ void SCamera::Update([[maybe_unused]] f32 dt)
 	{
 		movement -= cam.Right;
 	}
+    if(m_MovementFlags & ECameraMovementFlags::Up)
+    {
+        movement += cam.Up;
+    }
+    if(m_MovementFlags & ECameraMovementFlags::Down)
+    {
+        movement -= cam.Up;
+    }
 
 	CTransform& transform = Engine::GetComponent<CTransform>(m_CameraEntity);
 
@@ -109,6 +122,16 @@ void SCamera::MoveCameraRight()
 	m_MovementFlags |= ECameraMovementFlags::Right;
 }
 
+void SCamera::MoveCameraUp()
+{
+    m_MovementFlags |= ECameraMovementFlags::Up;
+}
+
+void SCamera::MoveCameraDown()
+{
+    m_MovementFlags |= ECameraMovementFlags::Down;
+}
+
 void SCamera::StopCameraForward()
 {
 	m_MovementFlags &= ~ECameraMovementFlags::Forward;
@@ -127,6 +150,16 @@ void SCamera::StopCameraLeft()
 void SCamera::StopCameraRight()
 {
 	m_MovementFlags &= ~ECameraMovementFlags::Right;
+}
+
+void SCamera::StopCameraUp()
+{
+    m_MovementFlags &= ~ECameraMovementFlags::Up;
+}
+
+void SCamera::StopCameraDown()
+{
+    m_MovementFlags &= ~ECameraMovementFlags::Down;
 }
 
 void SCamera::OnMouseMoved(v2 delta)
@@ -151,8 +184,6 @@ void SCamera::OnMouseMoved(v2 delta)
 
 	// LogInfo("Forward: %f, %f, %f", cam.Forward.x, cam.Forward.y, cam.Forward.z);
 }
-
-
 
 
 } // namespace atom

@@ -26,6 +26,8 @@ private:
 	static void WriteMipMaps(const wgpu::Device& device, wgpu::Texture texture,
 		wgpu::Extent3D textureSize, [[maybe_unused]] u32 mipLevelCount, // not used yet
 		const unsigned char* pixelData);
+
+    static v3 CalculateTangent(const v3& p1, const v3& p2, const v3& p3, const v2& uv1, const v2& uv2, const v2& uv3);
 };
 
 } // namespace atom

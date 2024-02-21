@@ -16,6 +16,7 @@
 #include <cmath>
 #include "RenderUtil.h"
 #include "Camera/CCamera.h"
+#include "CTransfrom.h"
 
 #include "ResourceLoader.h"
 
@@ -89,7 +90,7 @@ void Renderer::Draw()
 
     MyUniforms uniforms = {};
 
-    Engine::GetView<CCamera>().each([&](const CCamera& camera)
+    Engine::GetView<CCamera, CTransform>().each([&](const CCamera& camera, const CTransform& transform)
     {
         m4 model = m4(1.0f);
         model = glm::translate(model, v3(0.0f, 0.0f, 0.0f));
@@ -99,6 +100,8 @@ void Renderer::Draw()
         uniforms.m_Model = model;
         uniforms.m_View = camera.View;
         uniforms.m_Projection = camera.Projection;
+        uniforms.m_CameraPosition = transform.Position;
+        uniforms.m_padding = glfwGetTime();
     });
 
     //m4 model = m4(1.0f);
@@ -185,10 +188,10 @@ void Renderer::SetupDevice()
     m_UniformStride = RenderUtil::CeilToNextMultiple(sizeof(MyUniforms), deviceLimits.minUniformBufferOffsetAlignment);
 
     wgpu::RequiredLimits requiredLimits = {};
-    requiredLimits.limits.maxVertexAttributes = 4;
+    requiredLimits.limits.maxVertexAttributes = 6;
     requiredLimits.limits.maxVertexBuffers = 1;
-    requiredLimits.limits.maxBufferSize = 8 * 7 * sizeof(float);
-    requiredLimits.limits.maxVertexBufferArrayStride = 7 * sizeof(float);
+    requiredLimits.limits.maxBufferSize = 8 * 15 * sizeof(float);
+    requiredLimits.limits.maxVertexBufferArrayStride = 15 * sizeof(float);
     requiredLimits.limits.minStorageBufferOffsetAlignment = supportedLimits.limits.minStorageBufferOffsetAlignment;
     requiredLimits.limits.minUniformBufferOffsetAlignment = supportedLimits.limits.minUniformBufferOffsetAlignment;
     requiredLimits.limits.maxInterStageShaderComponents = 8;
@@ -245,7 +248,7 @@ void Renderer::SetupSwapChain()
 void Renderer::SetupRenderPipeline()
 {
     RenderPipelineResources resources;
-    SetupShaderModules(resources, "../../../assets/shaders/shader.wgsl");
+    SetupShaderModules(resources, "../assets/shaders/shader.wgsl");
     SetupPipelineProperties(resources);
     SetupBindGroupLayout(resources);
     SetupPipelineLayout(resources);
@@ -373,7 +376,7 @@ void Renderer::SetupPipelineLayout(RenderPipelineResources& resources)
 
 void Renderer::SetupVertexBufferLayouts(RenderPipelineResources& resources)
 {
-    resources.vertexBufferLayouts.resize(4, {});
+    resources.vertexBufferLayouts.resize(6, {});
     
     // Position attribute
     resources.vertexBufferLayouts[0].attributeCount = 1;
@@ -387,17 +390,29 @@ void Renderer::SetupVertexBufferLayouts(RenderPipelineResources& resources)
     resources.vertexBufferLayouts[1].attributes = &resources.vertexAttributes[1];
     resources.vertexBufferLayouts[1].stepMode = wgpu::VertexStepMode::Vertex;
 
-    // Color attribute
+    // Tangent attribute
     resources.vertexBufferLayouts[2].attributeCount = 1;
-    resources.vertexBufferLayouts[2].arrayStride = 4 * sizeof(float);
+    resources.vertexBufferLayouts[2].arrayStride = 3 * sizeof(float);
     resources.vertexBufferLayouts[2].attributes = &resources.vertexAttributes[2];
     resources.vertexBufferLayouts[2].stepMode = wgpu::VertexStepMode::Vertex;
 
-    // UV attribute
+    // Bitangent attribute
     resources.vertexBufferLayouts[3].attributeCount = 1;
-    resources.vertexBufferLayouts[3].arrayStride = 2 * sizeof(float);
+    resources.vertexBufferLayouts[3].arrayStride = 3 * sizeof(float);
     resources.vertexBufferLayouts[3].attributes = &resources.vertexAttributes[3];
     resources.vertexBufferLayouts[3].stepMode = wgpu::VertexStepMode::Vertex;
+
+    // Color attribute
+    resources.vertexBufferLayouts[4].attributeCount = 1;
+    resources.vertexBufferLayouts[4].arrayStride = 4 * sizeof(float);
+    resources.vertexBufferLayouts[4].attributes = &resources.vertexAttributes[4];
+    resources.vertexBufferLayouts[4].stepMode = wgpu::VertexStepMode::Vertex;
+
+    // UV attribute
+    resources.vertexBufferLayouts[5].attributeCount = 1;
+    resources.vertexBufferLayouts[5].arrayStride = 2 * sizeof(float);
+    resources.vertexBufferLayouts[5].attributes = &resources.vertexAttributes[5];
+    resources.vertexBufferLayouts[5].stepMode = wgpu::VertexStepMode::Vertex;
 
     resources.pipelineDesc.vertex.bufferCount = static_cast<u32>(resources.vertexBufferLayouts.size());
     resources.pipelineDesc.vertex.buffers = resources.vertexBufferLayouts.data();
@@ -405,7 +420,7 @@ void Renderer::SetupVertexBufferLayouts(RenderPipelineResources& resources)
 
 void Renderer::SetupVertexAttributes(RenderPipelineResources& resources)
 {
-    resources.vertexAttributes.resize(4, {});
+    resources.vertexAttributes.resize(6, {});
 
     // Position attribute
     resources.vertexAttributes[0].shaderLocation = 0;
@@ -417,15 +432,25 @@ void Renderer::SetupVertexAttributes(RenderPipelineResources& resources)
     resources.vertexAttributes[1].format = wgpu::VertexFormat::Float32x3;
     resources.vertexAttributes[1].offset = 0;
 
+    // Tangent attribute
+    resources.vertexAttributes[2].shaderLocation = 2;
+    resources.vertexAttributes[2].format = wgpu::VertexFormat::Float32x3;
+    resources.vertexAttributes[2].offset = 0;
+
+    // Bitangent attribute
+    resources.vertexAttributes[3].shaderLocation = 3;
+    resources.vertexAttributes[3].format = wgpu::VertexFormat::Float32x3;
+    resources.vertexAttributes[3].offset = 0;
+
     // Color attribute
-	resources.vertexAttributes[2].shaderLocation = 2;
-	resources.vertexAttributes[2].format = wgpu::VertexFormat::Float32x4;
-	resources.vertexAttributes[2].offset = 0;
+	resources.vertexAttributes[4].shaderLocation = 4;
+	resources.vertexAttributes[4].format = wgpu::VertexFormat::Float32x4;
+	resources.vertexAttributes[4].offset = 0;
 
 	// UV attribute
-	resources.vertexAttributes[3].shaderLocation = 3;
-	resources.vertexAttributes[3].format = wgpu::VertexFormat::Float32x2;
-	resources.vertexAttributes[3].offset = 0;
+	resources.vertexAttributes[5].shaderLocation = 5;
+	resources.vertexAttributes[5].format = wgpu::VertexFormat::Float32x2;
+	resources.vertexAttributes[5].offset = 0;
 }
 
 void Renderer::SetupUniformBuffer(RenderPipelineResources& resources)
@@ -537,25 +562,25 @@ void Renderer::SetupTexture(RenderPipelineResources& resources)
 
 void Renderer::LoadTextures(RenderPipelineResources& resources)
 {
-    resources.baseColorTexture = ResourceLoader::LoadTexture("../../../assets/textures/bricks_base_color.png", m_Device, &resources.baseColorTextureView);
+    resources.baseColorTexture = ResourceLoader::LoadTexture("../assets/textures/bricks_c.png", m_Device, &resources.baseColorTextureView);
 	if (!resources.baseColorTexture)
     {
         LogError("Could not load texture!");
 	}
     
-	resources.normalTexture = ResourceLoader::LoadTexture("../../../assets/textures/bricks_normal.png", m_Device, &resources.normalTextureView);
+	resources.normalTexture = ResourceLoader::LoadTexture("../assets/textures/bricks_n.png", m_Device, &resources.normalTextureView);
     if (!resources.normalTexture)
     {
 		LogError("Could not load texture!");
 	}
 
-    resources.roughnessTexture = ResourceLoader::LoadTexture("../../../assets/textures/bricks_roughness.png", m_Device, &resources.roughnessTextureView);
+    resources.roughnessTexture = ResourceLoader::LoadTexture("../assets/textures/bricks_r.png", m_Device, &resources.roughnessTextureView);
     if (!resources.roughnessTexture)
     {
 		LogError("Could not load texture!");
 	}
     
-    resources.metallicTexture = ResourceLoader::LoadTexture("../../../assets/textures/bricks_metalic.png", m_Device, &resources.metallicTextureView);
+    resources.metallicTexture = ResourceLoader::LoadTexture("../assets/textures/bricks_m.png", m_Device, &resources.metallicTextureView);
     if (!resources.metallicTexture)
     {
 		LogError("Could not load texture!");

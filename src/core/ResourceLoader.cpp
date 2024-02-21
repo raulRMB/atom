@@ -99,18 +99,6 @@ CMesh ResourceLoader::LoadMesh(const char* path, EModelImportType modelType)
 				meshComponent.uvData.push_back(((float*)uvData)[i + 1]);
 			}
 
-            /*const tinygltf::Accessor& uvAccessor = model.accessors[primitive.attributes.at("COLOR")];
-            const tinygltf::BufferView& uvView = model.bufferViews[uvAccessor.bufferView];
-            const tinygltf::Buffer& uvBuffer = model.buffers[uvView.buffer];*/
-
-            //const void* uvData = &uvBuffer.data[uvView.byteOffset + uvAccessor.byteOffset];
-
-            /*u32 i = 0;
-            for (auto& vertex : meshComponent.pointData)
-            {
-                vertex = ((float*)positionData)[i + 0] * 0.01f;
-            }*/
-
             meshComponent.colorData.reserve(vertexCount * 4);
             for (u32 i = 0; i < vertexCount * 4; i += 4)
             {
@@ -120,8 +108,37 @@ CMesh ResourceLoader::LoadMesh(const char* path, EModelImportType modelType)
                 meshComponent.colorData.push_back(1.0f);
 			}
 
-            meshComponent.indexCount = indexCount;
+            meshComponent.indexCount = (i32)indexCount;
         }
+    }
+
+    std::vector<f32>& tangents = meshComponent.tangentData;
+    tangents.resize(meshComponent.pointData.size());
+
+    for (u32 i = 0; i < meshComponent.pointData.size(); i += 3)
+    {
+//        v3 p1 = v3(meshComponent.pointData[meshComponent.indexData[i + 0] * 3 + 0],
+//                   meshComponent.pointData[meshComponent.indexData[i + 0] * 3 + 1],
+//                   meshComponent.pointData[meshComponent.indexData[i + 0] * 3 + 2]);
+//        v3 p2 = v3(meshComponent.pointData[meshComponent.indexData[i + 1] * 3 + 0],
+//                   meshComponent.pointData[meshComponent.indexData[i + 1] * 3 + 1],
+//                   meshComponent.pointData[meshComponent.indexData[i + 1] * 3 + 2]);
+//        v3 p3 = v3(meshComponent.pointData[meshComponent.indexData[i + 2] * 3 + 0],
+//                   meshComponent.pointData[meshComponent.indexData[i + 2] * 3 + 1],
+//                   meshComponent.pointData[meshComponent.indexData[i + 2] * 3 + 2]);
+//
+//        v2 uv1 = v2(meshComponent.uvData[meshComponent.indexData[i + 0] * 2 + 0],
+//                    meshComponent.uvData[meshComponent.indexData[i + 0] * 2 + 1]);
+//        v2 uv2 = v2(meshComponent.uvData[meshComponent.indexData[i + 1] * 2 + 0],
+//                    meshComponent.uvData[meshComponent.indexData[i + 1] * 2 + 1]);
+//        v2 uv3 = v2(meshComponent.uvData[meshComponent.indexData[i + 2] * 2 + 0],
+//                    meshComponent.uvData[meshComponent.indexData[i + 2] * 2 + 1]);
+//
+//        v3 tangent = CalculateTangent(p1, p2, p3, uv1, uv2, uv3);
+//
+//        tangents.push_back(tangent.x);
+//        tangents.push_back(tangent.y);
+//        tangents.push_back(tangent.z);
     }
 
 	wgpu::BufferDescriptor bufferDesc;
@@ -136,6 +153,16 @@ CMesh ResourceLoader::LoadMesh(const char* path, EModelImportType modelType)
     bufferDesc.size = (meshComponent.normalData.size() * sizeof(f32) + 3) & ~3;
     meshComponent.normalBuffer = Engine::GetDevice().CreateBuffer(&bufferDesc);
     Engine::GetQueue().WriteBuffer(meshComponent.normalBuffer, 0, meshComponent.normalData.data(), bufferDesc.size);
+
+    bufferDesc.label = "Tangent Buffer";
+    bufferDesc.size = (meshComponent.tangentData.size() * sizeof(f32) + 3) & ~3;
+    meshComponent.tangentBuffer = Engine::GetDevice().CreateBuffer(&bufferDesc);
+    Engine::GetQueue().WriteBuffer(meshComponent.tangentBuffer, 0, meshComponent.tangentData.data(), bufferDesc.size);
+
+    bufferDesc.label = "Bitangent Buffer";
+    bufferDesc.size = (meshComponent.bitangentData.size() * sizeof(f32) + 3) & ~3;
+    meshComponent.bitangentBuffer = Engine::GetDevice().CreateBuffer(&bufferDesc);
+    Engine::GetQueue().WriteBuffer(meshComponent.bitangentBuffer, 0, meshComponent.bitangentData.data(), bufferDesc.size);
 
 	bufferDesc.size = (meshComponent.colorData.size() * sizeof(f32) + 3) & ~3;
     bufferDesc.label = "Color Buffer";
@@ -255,6 +282,27 @@ void ResourceLoader::WriteMipMaps(const wgpu::Device& device, wgpu::Texture text
 		mipLevelSize.width /= 2;
 		mipLevelSize.height /= 2;
 	}
+}
+
+v3 ResourceLoader::CalculateTangent(const v3 &p1, const v3 &p2, const v3 &p3, const v2 &uv1, const v2 &uv2,
+                                    const v2 &uv3)
+{
+    v3 edge1 = p2 - p1;
+    v3 edge2 = p3 - p1;
+    v2 deltaUV1 = uv2 - uv1;
+    v2 deltaUV2 = uv3 - uv1;
+
+    f32 f = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
+
+    v3 tangent;
+    tangent.x = f * (deltaUV2.y * edge1.x - deltaUV1.y * edge2.x);
+    tangent.y = f * (deltaUV2.y * edge1.y - deltaUV1.y * edge2.y);
+    tangent.z = f * (deltaUV2.y * edge1.z - deltaUV1.y * edge2.z);
+    tangent = glm::normalize(tangent);
+
+    LogInfo("Tangent: %f %f %f\n", tangent.x, tangent.y, tangent.z);
+
+    return tangent;
 }
 
 } // namespace atom

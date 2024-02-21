@@ -19,6 +19,10 @@ struct CMesh : public CComponent
 	std::vector<f32> pointData{};
 	wgpu::Buffer normalBuffer;
 	std::vector<f32> normalData{};
+    wgpu::Buffer tangentBuffer;
+    std::vector<f32> tangentData{};
+    wgpu::Buffer bitangentBuffer;
+    std::vector<f32> bitangentData{};
 	wgpu::Buffer colorBuffer;
 	std::vector<f32> colorData{};
 	wgpu::Buffer uvBuffer;

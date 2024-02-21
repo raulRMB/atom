@@ -33,11 +33,15 @@ public:
 	void MoveCameraBackward();
 	void MoveCameraLeft();
 	void MoveCameraRight();
+    void MoveCameraUp();
+    void MoveCameraDown();
 
 	void StopCameraForward();
 	void StopCameraBackward();
 	void StopCameraLeft();
 	void StopCameraRight();
+    void StopCameraUp();
+    void StopCameraDown();
 
 	void OnMouseMoved(v2 delta);
 };
