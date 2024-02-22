@@ -151,7 +151,7 @@ void Reader::SetMemory(const char *memory)
 {
     ClearMemory();
     m_Memory = new char[strlen(memory) + 1];
-    strcpy_s(m_Memory, strlen(memory) + 1, memory);
+    strcpy(m_Memory, memory);
 }
 
 const char *Reader::GetMemory()

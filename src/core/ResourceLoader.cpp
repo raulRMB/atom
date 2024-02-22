@@ -5,6 +5,7 @@
 #include "Components.h"
 
 #include "stb_image.h"
+#include <bit>
 
 namespace atom
 {
@@ -115,30 +116,56 @@ CMesh ResourceLoader::LoadMesh(const char* path, EModelImportType modelType)
     std::vector<f32>& tangents = meshComponent.tangentData;
     tangents.resize(meshComponent.pointData.size());
 
-    for (u32 i = 0; i < meshComponent.pointData.size(); i += 3)
+    std::vector<f32>& bitangents = meshComponent.bitangentData;
+    bitangents.resize(meshComponent.pointData.size());
+
+    for(u32 i = 0; i < meshComponent.indexData.size(); i += 3)
     {
-//        v3 p1 = v3(meshComponent.pointData[meshComponent.indexData[i + 0] * 3 + 0],
-//                   meshComponent.pointData[meshComponent.indexData[i + 0] * 3 + 1],
-//                   meshComponent.pointData[meshComponent.indexData[i + 0] * 3 + 2]);
-//        v3 p2 = v3(meshComponent.pointData[meshComponent.indexData[i + 1] * 3 + 0],
-//                   meshComponent.pointData[meshComponent.indexData[i + 1] * 3 + 1],
-//                   meshComponent.pointData[meshComponent.indexData[i + 1] * 3 + 2]);
-//        v3 p3 = v3(meshComponent.pointData[meshComponent.indexData[i + 2] * 3 + 0],
-//                   meshComponent.pointData[meshComponent.indexData[i + 2] * 3 + 1],
-//                   meshComponent.pointData[meshComponent.indexData[i + 2] * 3 + 2]);
-//
-//        v2 uv1 = v2(meshComponent.uvData[meshComponent.indexData[i + 0] * 2 + 0],
-//                    meshComponent.uvData[meshComponent.indexData[i + 0] * 2 + 1]);
-//        v2 uv2 = v2(meshComponent.uvData[meshComponent.indexData[i + 1] * 2 + 0],
-//                    meshComponent.uvData[meshComponent.indexData[i + 1] * 2 + 1]);
-//        v2 uv3 = v2(meshComponent.uvData[meshComponent.indexData[i + 2] * 2 + 0],
-//                    meshComponent.uvData[meshComponent.indexData[i + 2] * 2 + 1]);
-//
-//        v3 tangent = CalculateTangent(p1, p2, p3, uv1, uv2, uv3);
-//
-//        tangents.push_back(tangent.x);
-//        tangents.push_back(tangent.y);
-//        tangents.push_back(tangent.z);
+        v3 p1 = v3(meshComponent.pointData[meshComponent.indexData[i + 0] * 3 + 0],
+                   meshComponent.pointData[meshComponent.indexData[i + 0] * 3 + 1],
+                   meshComponent.pointData[meshComponent.indexData[i + 0] * 3 + 2]);
+        v3 p2 = v3(meshComponent.pointData[meshComponent.indexData[i + 1] * 3 + 0],
+                   meshComponent.pointData[meshComponent.indexData[i + 1] * 3 + 1],
+                   meshComponent.pointData[meshComponent.indexData[i + 1] * 3 + 2]);
+        v3 p3 = v3(meshComponent.pointData[meshComponent.indexData[i + 2] * 3 + 0],
+                   meshComponent.pointData[meshComponent.indexData[i + 2] * 3 + 1],
+                   meshComponent.pointData[meshComponent.indexData[i + 2] * 3 + 2]);
+
+        v2 uv1 = v2(meshComponent.uvData[meshComponent.indexData[i + 0] * 2 + 0],
+                    meshComponent.uvData[meshComponent.indexData[i + 0] * 2 + 1]);
+        v2 uv2 = v2(meshComponent.uvData[meshComponent.indexData[i + 1] * 2 + 0],
+                    meshComponent.uvData[meshComponent.indexData[i + 1] * 2 + 1]);
+        v2 uv3 = v2(meshComponent.uvData[meshComponent.indexData[i + 2] * 2 + 0],
+                    meshComponent.uvData[meshComponent.indexData[i + 2] * 2 + 1]);
+
+        m3 TBN = CalculateTangent(p1, p2, p3, uv1, uv2, uv3);
+
+        v3& tangent = TBN[0];
+
+        tangents[meshComponent.indexData[i + 0] * 3 + 0] = tangent.x;
+        tangents[meshComponent.indexData[i + 0] * 3 + 1] = tangent.y;
+        tangents[meshComponent.indexData[i + 0] * 3 + 2] = tangent.z;
+
+        tangents[meshComponent.indexData[i + 1] * 3 + 0] = tangent.x;
+        tangents[meshComponent.indexData[i + 1] * 3 + 1] = tangent.y;
+        tangents[meshComponent.indexData[i + 1] * 3 + 2] = tangent.z;
+
+        tangents[meshComponent.indexData[i + 2] * 3 + 0] = tangent.x;
+        tangents[meshComponent.indexData[i + 2] * 3 + 1] = tangent.y;
+        tangents[meshComponent.indexData[i + 2] * 3 + 2] = tangent.z;
+
+        v3& bitangent = TBN[1];
+        bitangents[meshComponent.indexData[i + 0] * 3 + 0] = bitangent.x;
+        bitangents[meshComponent.indexData[i + 0] * 3 + 1] = bitangent.y;
+        bitangents[meshComponent.indexData[i + 0] * 3 + 2] = bitangent.z;
+
+        bitangents[meshComponent.indexData[i + 1] * 3 + 0] = bitangent.x;
+        bitangents[meshComponent.indexData[i + 1] * 3 + 1] = bitangent.y;
+        bitangents[meshComponent.indexData[i + 1] * 3 + 2] = bitangent.z;
+
+        bitangents[meshComponent.indexData[i + 2] * 3 + 0] = bitangent.x;
+        bitangents[meshComponent.indexData[i + 2] * 3 + 1] = bitangent.y;
+        bitangents[meshComponent.indexData[i + 2] * 3 + 2] = bitangent.z;
     }
 
 	wgpu::BufferDescriptor bufferDesc;
@@ -284,7 +311,7 @@ void ResourceLoader::WriteMipMaps(const wgpu::Device& device, wgpu::Texture text
 	}
 }
 
-v3 ResourceLoader::CalculateTangent(const v3 &p1, const v3 &p2, const v3 &p3, const v2 &uv1, const v2 &uv2,
+m3 ResourceLoader::CalculateTangent(const v3 &p1, const v3 &p2, const v3 &p3, const v2 &uv1, const v2 &uv2,
                                     const v2 &uv3)
 {
     v3 edge1 = p2 - p1;
@@ -292,17 +319,11 @@ v3 ResourceLoader::CalculateTangent(const v3 &p1, const v3 &p2, const v3 &p3, co
     v2 deltaUV1 = uv2 - uv1;
     v2 deltaUV2 = uv3 - uv1;
 
-    f32 f = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
+    v3 tangent = glm::normalize(edge1 * deltaUV2.y - edge2 * deltaUV1.y);
+    v3 bitangent = glm::normalize(edge2 * deltaUV1.x - edge1 * deltaUV2.x);
+    v3 normal = glm::normalize(glm::cross(edge1, edge2));
 
-    v3 tangent;
-    tangent.x = f * (deltaUV2.y * edge1.x - deltaUV1.y * edge2.x);
-    tangent.y = f * (deltaUV2.y * edge1.y - deltaUV1.y * edge2.y);
-    tangent.z = f * (deltaUV2.y * edge1.z - deltaUV1.y * edge2.z);
-    tangent = glm::normalize(tangent);
-
-    LogInfo("Tangent: %f %f %f\n", tangent.x, tangent.y, tangent.z);
-
-    return tangent;
+    return m3(tangent, bitangent, normal);
 }
 
 } // namespace atom

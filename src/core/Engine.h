@@ -39,6 +39,8 @@ private:
     f64 m_LastFrameTime;
     f64 m_DeltaTime;
 public:
+    void UpdateRender();
+
     [[nodiscard]] Window* GetWindow() const;
     GLFWwindow* GetGLFWWindow();
     [[nodiscard]] Renderer* GetRenderer() const;
@@ -66,6 +68,8 @@ public:
 
     static wgpu::Device& GetDevice();
     static wgpu::Queue& GetQueue();
+
+    void SetRenderer(Renderer* renderer);
 };
 
 }

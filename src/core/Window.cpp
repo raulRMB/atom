@@ -18,7 +18,9 @@ Window::Window() : m_pWindow(nullptr)
     }
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    glfwWindowHint(GLFW_FOCUSED, GLFW_TRUE);
     m_pWindow = glfwCreateWindow(640, 480, "Hello World", nullptr, nullptr);
+    //glfwSetWindowMonitor(m_pWindow, nullptr, 0, 0, 1920, 1080, 0);
 
     if (!m_pWindow)
     {

@@ -54,8 +54,9 @@ i32 Engine::ParseCommandLine(int argc, char **argv)
 
 i32 Engine::Init()
 {
+    LogInfo("Engine::Init");
     m_pWindow = Window::Create();
-    m_pRenderer = Renderer::Create();
+    Renderer::Create();
     m_pCurrentScene = new Scene();
 
     m_pCurrentScene->AddUpdateSystem(new SCamera());
@@ -78,8 +79,28 @@ i32 Engine::Init()
     return EXIT_SUCCESS;
 }
 
+void Engine::UpdateRender()
+{
+    m_CurrentFrameTime = glfwGetTime();
+    m_DeltaTime = m_CurrentFrameTime - m_LastFrameTime;
+    m_LastFrameTime = m_CurrentFrameTime;
+
+    m_pCurrentScene->Update(m_DeltaTime);
+    m_pRenderer->Draw();
+}
+
+void Render()
+{
+    Engine::Instance().UpdateRender();
+}
+
 i32 Engine::MainLoop()
 {
+    LogInfo("Engine::MainLoop");
+
+#if defined(__EMSCRIPTEN__)
+    emscripten_set_main_loop(Render, 0, false);
+#else
     while(m_pWindow->PollEvents())
     {
 		m_CurrentFrameTime = glfwGetTime();
@@ -89,7 +110,7 @@ i32 Engine::MainLoop()
         m_pCurrentScene->Update(m_DeltaTime);
         m_pRenderer->Draw();
     }
-
+#endif
     return EXIT_SUCCESS;
 }
 
@@ -135,6 +156,11 @@ wgpu::Queue& Engine::GetQueue()
 GLFWwindow* Engine::GetGLFWWindow()
 {
     return m_pWindow->GetWindow();
+}
+
+void Engine::SetRenderer(Renderer *renderer)
+{
+    m_pRenderer = renderer;
 }
 
 

@@ -3,7 +3,6 @@
 //
 
 #include "Renderer.h"
-#include <webgpu/webgpu_glfw.h>
 #include "Logger.h"
 #include "Engine.h"
 #include <iostream>
@@ -36,6 +35,7 @@ Renderer::~Renderer() = default;
 
 void Renderer::Init()
 {
+    LogInfo("Renderer::Init");
     SetupInstance();
     SetupSurface();
     SetupAdapter();
@@ -128,17 +128,15 @@ void Renderer::Draw()
 Renderer *Renderer::Create()
 {
     Renderer* pRenderer = new Renderer();
+    Engine::Instance().SetRenderer(pRenderer);
     pRenderer->Init();
     return pRenderer;
 }
 
 void Renderer::SetupInstance()
 {
-    wgpu::InstanceDescriptor instanceDesc = {};
-    instanceDesc.nextInChain = nullptr;
-
-    m_Instance = wgpu::CreateInstance(&instanceDesc);
-
+    LogInfo("Renderer::SetupInstance");
+    m_Instance = wgpu::CreateInstance();
     if(m_Instance == nullptr)
     {
         LogError("Failed to create WebGPU instance.");
@@ -148,17 +146,28 @@ void Renderer::SetupInstance()
 
 void Renderer::SetupSurface()
 {
+LogInfo("Renderer::SetupSurface");
+#if defined(__EMSCRIPTEN__)
+    wgpu::SurfaceDescriptorFromCanvasHTMLSelector canvasDesc{};
+  canvasDesc.selector = "#canvas";
+
+  wgpu::SurfaceDescriptor surfaceDesc{.nextInChain = &canvasDesc};
+  m_Surface = m_Instance.CreateSurface(&surfaceDesc);
+#else
     m_Surface = wgpu::glfw::CreateSurfaceForWindow(m_Instance, Engine::Instance().GetGLFWWindow());
+#endif
 }
 
 void Renderer::SetupAdapter()
 {
+    LogInfo("Renderer::SetupAdapter");
+#if !defined(__EMSCRIPTEN__)
     wgpu::RequestAdapterOptions adapterOpts = {};
     adapterOpts.nextInChain = nullptr;
     adapterOpts.compatibleSurface = m_Surface;
     adapterOpts.backendType = wgpu::BackendType::D3D12;
 
-    m_Adapter = wgpu::atom::RequestAdapter(m_Instance, &adapterOpts);
+    m_Adapter = atom::RequestAdapter(m_Instance, &adapterOpts);
 
     std::vector<wgpu::FeatureName> features;
     size_t featureCount = m_Adapter.EnumerateFeatures(nullptr);
@@ -167,10 +176,48 @@ void Renderer::SetupAdapter()
 
     for (wgpu::FeatureName f : features)
     {
-        LogInfo("Adapter feature [%s] is enabled", wgpu::atom::FeatureNameToString(f).c_str());
+        LogInfo("Adapter feature [%s] is enabled", atom::FeatureNameToString(f).c_str());
     }
+#endif
 }
 
+void CreateDeviceCallback(void (*callback)(wgpu::Device))
+{
+    LogInfo("CreateDeviceCallback");
+    wgpu::Instance& inst = Engine::Instance().GetRenderer()->GetInstance();
+    if(inst == nullptr)
+    {
+        LogError("Instance is null");
+        exit(0);
+    }
+    inst.RequestAdapter(
+            nullptr,
+            [](WGPURequestAdapterStatus status, WGPUAdapter cAdapter,
+               [[maybe_unused]] const char* message, [[maybe_unused]] void* userdata) {
+                if (status != WGPURequestAdapterStatus_Success) {
+                    LogError("Adapter status: %d", status);
+                    exit(0);
+                }
+                wgpu::Adapter adapter = wgpu::Adapter::Acquire(cAdapter);
+                adapter.RequestDevice(
+                        nullptr,
+                        []([[maybe_unused]] WGPURequestDeviceStatus status, WGPUDevice cDevice,
+                           [[maybe_unused]] const char* message, [[maybe_unused]] void* userdata) {
+                            LogInfo("Device created");
+                            wgpu::Device device = wgpu::Device::Acquire(cDevice);
+                            device.SetUncapturedErrorCallback(
+                                    [](WGPUErrorType type, [[maybe_unused]] const char* message, [[maybe_unused]] void* userdata) {
+                                        LogError("Type: %s - Message: %s", type, message);
+                                    },
+                                    nullptr);
+                            reinterpret_cast<void (*)(wgpu::Device)>(userdata)(device);
+                        },
+                        userdata);
+            },
+            reinterpret_cast<void*>(callback));
+}
+
+wgpu::Device dev;
 void Renderer::SetupDevice()
 {
     wgpu::DeviceDescriptor deviceDesc = {};
@@ -180,6 +227,7 @@ void Renderer::SetupDevice()
     deviceDesc.defaultQueue.nextInChain = nullptr;
     deviceDesc.defaultQueue.label = "The default queue";
 
+#if !defined(__EMSCRIPTEN__)
     wgpu::SupportedLimits supportedLimits;
     m_Adapter.GetLimits(&supportedLimits);
 
@@ -202,19 +250,23 @@ void Renderer::SetupDevice()
 
     requiredLimits.limits.maxDynamicUniformBuffersPerPipelineLayout = 1;
 
-    requiredLimits.limits.maxTextureDimension1D = 2048;
-    requiredLimits.limits.maxTextureDimension2D = 2048;
+    requiredLimits.limits.maxTextureDimension1D = 2048 * 4;
+    requiredLimits.limits.maxTextureDimension2D = 2048 * 4;
     requiredLimits.limits.maxTextureArrayLayers = 1;
 
     requiredLimits.limits.maxSamplersPerShaderStage = 1;
 
     deviceDesc.requiredLimits = &requiredLimits;
-    m_Device = wgpu::atom::RequestDevice(m_Adapter, &deviceDesc);
+#endif
+
+    m_Device = atom::RequestDevice(m_Adapter, &deviceDesc);
     LogInfo("Device created: %p", m_Device.Get());
 
+    std::string errorString;
     auto onDeviceError = [](WGPUErrorType type, const char* message, [[maybe_unused]] void* userdata)
     {
-        const char *errorTypeString = wgpu::atom::ErrorTypeToString(type).c_str();
+        std::string errorString = atom::ErrorTypeToString(type);
+        const char *errorTypeString = errorString.c_str();
         LogError("Device %s: %s", errorTypeString, message);
     };
     m_Device.SetUncapturedErrorCallback(onDeviceError, nullptr);
@@ -224,11 +276,13 @@ void Renderer::SetupQueue()
 {
     m_Queue = m_Device.GetQueue();
 
+#if !defined(__EMSCRIPTEN__)
     auto onQueueWorkDone = [](WGPUQueueWorkDoneStatus status, [[maybe_unused]] void* userdata)
     {
         LogInfo("Queue work done: %d", status);
     };
     m_Queue.OnSubmittedWorkDone(onQueueWorkDone, nullptr);
+#endif
 }
 
 void Renderer::SetupSwapChain()
@@ -298,7 +352,11 @@ void Renderer::SetupShaderModules(RenderPipelineResources& resources, const char
     resources.fragmentState.constants = nullptr;
     resources.pipelineDesc.fragment = &resources.fragmentState;
 
+#if !defined(__EMSCRIPTEN__)
     resources.colorTarget.format = m_SwapChain.GetCurrentTexture().GetFormat();
+#else
+    resources.colorTarget.format = wgpu::TextureFormat::BGRA8Unorm;
+#endif
 
     resources.blendState.color.srcFactor = wgpu::BlendFactor::SrcAlpha;
     resources.blendState.color.dstFactor = wgpu::BlendFactor::OneMinusSrcAlpha;
@@ -562,25 +620,27 @@ void Renderer::SetupTexture(RenderPipelineResources& resources)
 
 void Renderer::LoadTextures(RenderPipelineResources& resources)
 {
-    resources.baseColorTexture = ResourceLoader::LoadTexture("../assets/textures/bricks_c.png", m_Device, &resources.baseColorTextureView);
+    std::string name = "metal";
+    std::string path = "../assets/textures/" + name;
+    resources.baseColorTexture = ResourceLoader::LoadTexture((path + "_c.png").c_str(), m_Device, &resources.baseColorTextureView);
 	if (!resources.baseColorTexture)
     {
         LogError("Could not load texture!");
 	}
     
-	resources.normalTexture = ResourceLoader::LoadTexture("../assets/textures/bricks_n.png", m_Device, &resources.normalTextureView);
+	resources.normalTexture = ResourceLoader::LoadTexture((path + "_n.png").c_str(), m_Device, &resources.normalTextureView);
     if (!resources.normalTexture)
     {
 		LogError("Could not load texture!");
 	}
 
-    resources.roughnessTexture = ResourceLoader::LoadTexture("../assets/textures/bricks_r.png", m_Device, &resources.roughnessTextureView);
+    resources.roughnessTexture = ResourceLoader::LoadTexture((path + "_r.png").c_str(), m_Device, &resources.roughnessTextureView);
     if (!resources.roughnessTexture)
     {
 		LogError("Could not load texture!");
 	}
     
-    resources.metallicTexture = ResourceLoader::LoadTexture("../assets/textures/bricks_m.png", m_Device, &resources.metallicTextureView);
+    resources.metallicTexture = ResourceLoader::LoadTexture((path + "_m.png").c_str(), m_Device, &resources.metallicTextureView);
     if (!resources.metallicTexture)
     {
 		LogError("Could not load texture!");
@@ -610,6 +670,11 @@ wgpu::Device& Renderer::GetDevice()
 wgpu::Queue& Renderer::GetQueue()
 {
     return m_Queue;
+}
+
+wgpu::Instance &Renderer::GetInstance()
+{
+    return m_Instance;
 }
 
 } // namespace atom

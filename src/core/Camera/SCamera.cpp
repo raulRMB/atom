@@ -11,7 +11,7 @@
 namespace atom
 {
 
-SCamera::SCamera() : m_MovementFlags(0), m_CameraEntity(entt::null)
+SCamera::SCamera() : m_CameraEntity(entt::null), m_MovementFlags(0)
 {
 	m_CameraEntity = Engine::CreateEntity();
 
@@ -165,7 +165,7 @@ void SCamera::StopCameraDown()
 void SCamera::OnMouseMoved(v2 delta)
 {
 	CCamera& cam = Engine::GetComponent<CCamera>(m_CameraEntity);
-	CTransform& transform = Engine::GetComponent<CTransform>(m_CameraEntity);
+//	CTransform& transform = Engine::GetComponent<CTransform>(m_CameraEntity);
 
 	LogInfo("Delta x: %f", delta.x);
 	LogInfo("Delta y: %f", delta.y);

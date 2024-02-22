@@ -99,48 +99,87 @@ fn GeometrySmith(N: vec3f, V: vec3f, L: vec3f, roughness: f32) -> f32
     return ggx1 * ggx2;
 }
 
+struct Light {
+    position: vec3f,
+    color: vec3f
+}
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4f {
-    let light_pos = vec3f(0, sin(in.padding) * 3.0, 2.0);
+    var lights = array<Light, 4>();
+
+    let cos0 = cos(in.padding);
+    let sin0 = sin(in.padding);
+    let cos1 = cos(in.padding + PI / 2.0);
+    let sin1 = sin(in.padding + PI / 2.0);
+    let cos2 = cos(in.padding + PI);
+    let sin2 = sin(in.padding + PI);
+    let cos3 = cos(in.padding + PI * 3.0 / 2.0);
+    let sin3 = sin(in.padding + PI * 3.0 / 2.0);
+
+    lights[0].position = vec3f(cos0, 1, sin0);
+    lights[0].color = vec3f(1.0, 0.0, 0.0);
+
+    lights[1].position = vec3f(cos1, 1, sin1);
+    lights[1].color = vec3f(0.0);
+
+    lights[2].position = vec3f(cos2, 1, sin2);
+    lights[2].color = vec3f(0.0, 0.0, 0.0);
+
+    lights[3].position = vec3f(cos3, 1, sin3);
+    lights[3].color = vec3f(0.0, 0.0, 0.0);
+
     let frag_pos = in.frag_pos;
 
     let metalic = textureSample(base_color_texture, texture_sampler, in.uv).r;
     let albedo = textureSample(base_color_texture, texture_sampler, in.uv).rgb;
     let roughness = textureSample(roughness_texture, texture_sampler, in.uv).r;
-    let normal = textureSample(normal_texture, texture_sampler, in.uv).rgb;
+    let local_normal = textureSample(normal_texture, texture_sampler, in.uv).rgb;
 
-    let TBN = mat3x3<f32>(in.tangent, in.bitangent, in.normal);
+    let TBN = mat3x3f(
+        normalize(in.tangent),
+        normalize(in.bitangent),
+        normalize(in.normal)
+    );
 
-    let N = normalize(mix(in.normal, normal, 0.5));
+    let world_normal = normalize(TBN * (local_normal * 2.0 - 1.0));
+
+    let N = normalize(mix(in.normal, world_normal, 0.5));
     let V = normalize(in.view_pos - frag_pos);
 
     var F0 = vec3f(0.04);
     F0 = mix(F0, albedo, metalic);
 
-    let L = normalize(light_pos - frag_pos);
-    let H = normalize(V + L);
+    var Lo = vec3f(0.0);
+    for(var i = 0; i < 4; i++)
+    {
+        let light_pos = lights[i].position;
+        let light_color = lights[i].color;
 
-    let distance     = length(light_pos - frag_pos);
-    let attenuation  = 1.0 / (distance * distance);
-    let radiance     = vec3f(1.0, 1.0, 1.0) * attenuation;
+        let L = normalize(light_pos - frag_pos);
+        let H = normalize(V + L);
 
-    let NDF = DistributionGGX(N, H, roughness);
-    let G = GeometrySmith(N, V, L, roughness);
-    let F = fresnelSchlick(max(dot(H, V), 0.0), F0);
+        let distance     = length(light_pos - frag_pos);
+        let attenuation  = 1.0 / (distance * distance);
+        let radiance     = light_color * attenuation;
 
-    let kS = F;
-    var kD = vec3f(1.0) - kS;
-    kD *= 1.0 - metalic;
+        let NDF = DistributionGGX(N, H, roughness);
+        let G = GeometrySmith(N, V, L, roughness);
+        let F = fresnelSchlick(max(dot(H, V), 0.0), F0);
 
-    let numerator = NDF * G * F;
-    let denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001;
-    let specular = numerator / denominator;
+        let kS = F;
+        var kD = vec3f(1.0) - kS;
+        kD *= 1.0 - metalic;
 
-    let NdotL = max(dot(N, L), 0.0);
-    let Lo = (kD * albedo / PI + specular) * radiance * NdotL;
+        let numerator = NDF * G * F;
+        let denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001;
+        let specular = numerator / denominator;
 
-    let ambient = vec3f(0.03) * albedo * 0.02;
+        let NdotL = max(dot(N, L), 0.0);
+        Lo += (kD * albedo / PI + specular) * radiance * NdotL;
+    }
+
+    let ambient = vec3f(0.03) * albedo * 0.2;
     var color = ambient + Lo;
 
     color = color / (color + vec3f(1.0));

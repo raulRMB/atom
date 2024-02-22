@@ -38,28 +38,44 @@ if(XCODE)
             XCODE_SCHEME_ENABLE_GPU_FRAME_CAPTURE_MODE "Metal")
 endif()
 
-set(DAWN_FETCH_DEPENDENCIES ON)
 CPMAddPackage(
-    NAME dawn 
-    URL "https://dawn.googlesource.com/dawn/+archive/refs/heads/main.tar.gz"
+        NAME glm
+        GITHUB_REPOSITORY g-truc/glm
+        GIT_TAG 0.9.9.7
 )
 
 CPMAddPackage(
-    NAME glm
-    GITHUB_REPOSITORY g-truc/glm
-    GIT_TAG 0.9.9.7
+        NAME tiny_gltf
+        GITHUB_REPOSITORY syoyo/tinygltf
+        GIT_TAG v2.8.20
 )
 
 CPMAddPackage(
-    NAME tiny_gltf
-    GITHUB_REPOSITORY syoyo/tinygltf
-    GIT_TAG v2.8.20
+        NAME EnTT
+        GITHUB_REPOSITORY skypjack/entt
+        GIT_TAG v3.13.1
 )
 
-CPMAddPackage(
-    NAME EnTT
-    GITHUB_REPOSITORY skypjack/entt
-    GIT_TAG v3.13.1
-)
+if(EMSCRIPTEN)
+    set(CMAKE_EXECUTABLE_SUFFIX ".html")
 
-target_link_libraries(${PROJECT_NAME} PRIVATE webgpu_cpp webgpu_dawn webgpu_glfw glm tinygltf EnTT)
+    # TODO: all the debug flags are link only
+    #set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -s DEMANGLE_SUPPORT=1 -s SAFE_HEAP=1 -s STACK_OVERFLOW_CHECK=2")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -s DISABLE_EXCEPTION_CATCHING=1")
+    # --closure 1
+
+    set(CMAKE_EXE_LINKER_FLAGS "-s ASSERTIONS=0 -s WASM=1 -s USE_WEBGPU=1 -s USE_GLFW=3 -s NO_EXIT_RUNTIME=1")
+    # -s EVAL_CTORS=1
+
+    # Linker flags to optimize for smallest output code size
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -s ENVIRONMENT=web -s TEXTDECODER=2 -s ABORTING_MALLOC=0 -s ALLOW_MEMORY_GROWTH=0 -s SUPPORT_ERRNO=0 -s MALLOC=emmalloc -s NO_FILESYSTEM=1 --output_eol=linux")
+    target_link_libraries(${PROJECT_NAME} PRIVATE glm tinygltf EnTT)
+else()
+    set(DAWN_FETCH_DEPENDENCIES ON)
+    add_subdirectory("dawn" EXCLUDE_FROM_ALL)
+    target_link_libraries(${PROJECT_NAME} PRIVATE webgpu_cpp webgpu_dawn webgpu_glfw glm tinygltf EnTT)
+endif()
+
+
+
+

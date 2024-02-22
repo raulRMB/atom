@@ -3,12 +3,10 @@
 //
 
 #include "wgpu_atom.h"
-#include <webgpu/webgpu_cpp.h>
 #include <cassert>
 #include "Logger.h"
 
-namespace wgpu
-{
+#include <webgpu/webgpu_cpp.h>
 
 #if defined(DAWN_ENABLE_D3D12)
     static wgpu::BackendType backendType = wgpu::BackendType::D3D12;
@@ -27,130 +25,133 @@ namespace wgpu
 namespace atom
 {
 
-std::string FeatureNameToString(FeatureName featureName)
+std::string FeatureNameToString([[maybe_unused]] wgpu::FeatureName featureName)
 {
+#if !defined(__EMSCRIPTEN__)
     switch (featureName)
     {
-        case FeatureName::Undefined:
+        case wgpu::FeatureName::Undefined:
             return "Undefined";
-        case FeatureName::DepthClipControl:
+        case wgpu::FeatureName::DepthClipControl:
             return "DepthClipControl";
-        case FeatureName::Depth32FloatStencil8:
+        case wgpu::FeatureName::Depth32FloatStencil8:
             return "Depth32FloatStencil8";
-        case FeatureName::TimestampQuery:
+        case wgpu::FeatureName::TimestampQuery:
             return "TimestampQuery";
-        case FeatureName::TextureCompressionBC:
+        case wgpu::FeatureName::TextureCompressionBC:
             return "TextureCompressionBC";
-        case FeatureName::TextureCompressionETC2:
+        case wgpu::FeatureName::TextureCompressionETC2:
             return "TextureCompressionETC2";
-        case FeatureName::TextureCompressionASTC:
+        case wgpu::FeatureName::TextureCompressionASTC:
             return "TextureCompressionASTC";
-        case FeatureName::IndirectFirstInstance:
+        case wgpu::FeatureName::IndirectFirstInstance:
             return "IndirectFirstInstance";
-        case FeatureName::ShaderF16:
+        case wgpu::FeatureName::ShaderF16:
             return "ShaderF16";
-        case FeatureName::RG11B10UfloatRenderable:
+        case wgpu::FeatureName::RG11B10UfloatRenderable:
             return "RG11B10UfloatRenderable";
-        case FeatureName::BGRA8UnormStorage:
+        case wgpu::FeatureName::BGRA8UnormStorage:
             return "BGRA8UnormStorage";
-        case FeatureName::Float32Filterable:
+        case wgpu::FeatureName::Float32Filterable:
             return "Float32Filterable";
-        case FeatureName::DawnInternalUsages:
+        case wgpu::FeatureName::DawnInternalUsages:
             return "DawnInternalUsages";
-        case FeatureName::DawnMultiPlanarFormats:
+        case wgpu::FeatureName::DawnMultiPlanarFormats:
             return "DawnMultiPlanarFormats";
-        case FeatureName::DawnNative:
+        case wgpu::FeatureName::DawnNative:
             return "DawnNative";
-        case FeatureName::ChromiumExperimentalTimestampQueryInsidePasses:
+        case wgpu::FeatureName::ChromiumExperimentalTimestampQueryInsidePasses:
             return "ChromiumExperimentalTimestampQueryInsidePasses";
-        case FeatureName::ImplicitDeviceSynchronization:
+        case wgpu::FeatureName::ImplicitDeviceSynchronization:
             return "ImplicitDeviceSynchronization";
-        case FeatureName::SurfaceCapabilities:
+        case wgpu::FeatureName::SurfaceCapabilities:
             return "SurfaceCapabilities";
-        case FeatureName::TransientAttachments:
+        case wgpu::FeatureName::TransientAttachments:
             return "TransientAttachments";
-        case FeatureName::MSAARenderToSingleSampled:
+        case wgpu::FeatureName::MSAARenderToSingleSampled:
             return "MSAARenderToSingleSampled";
-        case FeatureName::DualSourceBlending:
+        case wgpu::FeatureName::DualSourceBlending:
             return "DualSourceBlending";
-        case FeatureName::D3D11MultithreadProtected:
+        case wgpu::FeatureName::D3D11MultithreadProtected:
             return "D3D11MultithreadProtected";
-        case FeatureName::ANGLETextureSharing:
+        case wgpu::FeatureName::ANGLETextureSharing:
             return "ANGLETextureSharing";
-        case FeatureName::ChromiumExperimentalSubgroups:
+        case wgpu::FeatureName::ChromiumExperimentalSubgroups:
             return "ChromiumExperimentalSubgroups";
-        case FeatureName::ChromiumExperimentalSubgroupUniformControlFlow:
+        case wgpu::FeatureName::ChromiumExperimentalSubgroupUniformControlFlow:
             return "ChromiumExperimentalSubgroupUniformControlFlow";
-        case FeatureName::PixelLocalStorageCoherent:
+        case wgpu::FeatureName::PixelLocalStorageCoherent:
             return "PixelLocalStorageCoherent";
-        case FeatureName::PixelLocalStorageNonCoherent:
+        case wgpu::FeatureName::PixelLocalStorageNonCoherent:
             return "PixelLocalStorageNonCoherent";
-        case FeatureName::Norm16TextureFormats:
+        case wgpu::FeatureName::Norm16TextureFormats:
             return "Norm16TextureFormats";
-        case FeatureName::MultiPlanarFormatExtendedUsages:
+        case wgpu::FeatureName::MultiPlanarFormatExtendedUsages:
             return "MultiPlanarFormatExtendedUsages";
-        case FeatureName::MultiPlanarFormatP010:
+        case wgpu::FeatureName::MultiPlanarFormatP010:
             return "MultiPlanarFormatP010";
-        case FeatureName::HostMappedPointer:
+        case wgpu::FeatureName::HostMappedPointer:
             return "HostMappedPointer";
-        case FeatureName::MultiPlanarRenderTargets:
+        case wgpu::FeatureName::MultiPlanarRenderTargets:
             return "MultiPlanarRenderTargets";
-        case FeatureName::MultiPlanarFormatNv12a:
+        case wgpu::FeatureName::MultiPlanarFormatNv12a:
             return "MultiPlanarFormatNv12a";
-        case FeatureName::FramebufferFetch:
+        case wgpu::FeatureName::FramebufferFetch:
             return "FramebufferFetch";
-        case FeatureName::BufferMapExtendedUsages:
+        case wgpu::FeatureName::BufferMapExtendedUsages:
             return "BufferMapExtendedUsages";
-        case FeatureName::AdapterPropertiesMemoryHeaps:
+        case wgpu::FeatureName::AdapterPropertiesMemoryHeaps:
             return "AdapterPropertiesMemoryHeaps";
-        case FeatureName::SharedTextureMemoryVkDedicatedAllocation:
+        case wgpu::FeatureName::SharedTextureMemoryVkDedicatedAllocation:
             return "SharedTextureMemoryVkDedicatedAllocation";
-        case FeatureName::SharedTextureMemoryAHardwareBuffer:
+        case wgpu::FeatureName::SharedTextureMemoryAHardwareBuffer:
             return "SharedTextureMemoryAHardwareBuffer";
-        case FeatureName::SharedTextureMemoryDmaBuf:
+        case wgpu::FeatureName::SharedTextureMemoryDmaBuf:
             return "SharedTextureMemoryDmaBuf";
-        case FeatureName::SharedTextureMemoryOpaqueFD:
+        case wgpu::FeatureName::SharedTextureMemoryOpaqueFD:
             return "SharedTextureMemoryOpaqueFD";
-        case FeatureName::SharedTextureMemoryZirconHandle:
+        case wgpu::FeatureName::SharedTextureMemoryZirconHandle:
             return "SharedTextureMemoryZirconHandle";
-        case FeatureName::SharedTextureMemoryDXGISharedHandle:
+        case wgpu::FeatureName::SharedTextureMemoryDXGISharedHandle:
             return "SharedTextureMemoryDXGISharedHandle";
-        case FeatureName::SharedTextureMemoryD3D11Texture2D:
+        case wgpu::FeatureName::SharedTextureMemoryD3D11Texture2D:
             return "SharedTextureMemoryD3D11Texture2D";
-        case FeatureName::SharedTextureMemoryIOSurface:
+        case wgpu::FeatureName::SharedTextureMemoryIOSurface:
             return "SharedTextureMemoryIOSurface";
-        case FeatureName::SharedTextureMemoryEGLImage:
+        case wgpu::FeatureName::SharedTextureMemoryEGLImage:
             return "SharedTextureMemoryEGLImage";
-        case FeatureName::SharedFenceVkSemaphoreOpaqueFD:
+        case wgpu::FeatureName::SharedFenceVkSemaphoreOpaqueFD:
             return "SharedFenceVkSemaphoreOpaqueFD";
-        case FeatureName::SharedFenceVkSemaphoreSyncFD:
+        case wgpu::FeatureName::SharedFenceVkSemaphoreSyncFD:
             return "SharedFenceVkSemaphoreSyncFD";
-        case FeatureName::SharedFenceVkSemaphoreZirconHandle:
+        case wgpu::FeatureName::SharedFenceVkSemaphoreZirconHandle:
             return "SharedFenceVkSemaphoreZirconHandle";
-        case FeatureName::SharedFenceDXGISharedHandle:
+        case wgpu::FeatureName::SharedFenceDXGISharedHandle:
             return "SharedFenceDXGISharedHandle";
-        case FeatureName::SharedFenceMTLSharedEvent:
+        case wgpu::FeatureName::SharedFenceMTLSharedEvent:
             return "SharedFenceMTLSharedEvent";
         default:
             return "Unknown";
     }
+#endif
+    return "Unknown";
 }
 
-std::string ErrorTypeToString(ErrorType errorType)
+std::string ErrorTypeToString(wgpu::ErrorType errorType)
 {
     switch(errorType)
     {
-        case ErrorType::NoError:
+        case wgpu::ErrorType::NoError:
             return "NoError";
-        case ErrorType::Validation:
+        case wgpu::ErrorType::Validation:
             return "Validation";
-        case ErrorType::OutOfMemory:
+        case wgpu::ErrorType::OutOfMemory:
             return "OutOfMemory";
-        case ErrorType::Internal:
+        case wgpu::ErrorType::Internal:
             return "Internal";
-        case ErrorType::Unknown:
+        case wgpu::ErrorType::Unknown:
             return "Unknown";
-        case ErrorType::DeviceLost:
+        case wgpu::ErrorType::DeviceLost:
             return "DeviceLost";
         default:
             return "Unknown";
@@ -159,10 +160,10 @@ std::string ErrorTypeToString(ErrorType errorType)
 
 std::string ErrorTypeToString(i32 errorType)
 {
-    return ErrorTypeToString(static_cast<ErrorType>(errorType));
+    return ErrorTypeToString(static_cast<wgpu::ErrorType>(errorType));
 }
 
-Adapter RequestAdapter(const Instance& instance, const RequestAdapterOptions* options)
+wgpu::Adapter RequestAdapter(const wgpu::Instance& instance, const wgpu::RequestAdapterOptions* options)
 {
     struct UserData {
         WGPUAdapter adapter = nullptr;
@@ -174,7 +175,7 @@ Adapter RequestAdapter(const Instance& instance, const RequestAdapterOptions* op
         if (status == WGPURequestAdapterStatus_Success) {
             userData.adapter = adapter;
         } else {
-            ::atom::LogError("Could not get WebGPU adapter: ", message);
+            LogError("Could not get WebGPU adapter: ", message);
         }
         userData.requestEnded = true;
     };
@@ -185,7 +186,7 @@ Adapter RequestAdapter(const Instance& instance, const RequestAdapterOptions* op
     return userData.adapter;
 }
 
-Device RequestDevice(Adapter adapter, const DeviceDescriptor* descriptor) {
+    wgpu::Device RequestDevice([[maybe_unused]] wgpu::Adapter adapter, [[maybe_unused]] const wgpu::DeviceDescriptor* descriptor) {
     struct UserData {
         WGPUDevice device = nullptr;
         bool requestEnded = false;
@@ -197,11 +198,10 @@ Device RequestDevice(Adapter adapter, const DeviceDescriptor* descriptor) {
         if (status == WGPURequestDeviceStatus_Success) {
             userData.device = device;
         } else {
-            ::atom::LogError("Could not get WebGPU device: %s", message);
+            LogError("Could not get WebGPU device: %s", message);
         }
         userData.requestEnded = true;
     };
-
     adapter.RequestDevice(descriptor, onDeviceRequestEnded, (void*)&userData);
 
     assert(userData.requestEnded);
@@ -210,7 +210,5 @@ Device RequestDevice(Adapter adapter, const DeviceDescriptor* descriptor) {
 }
 
 } // namespace atom
-
-} // namespace wgpu
 
 

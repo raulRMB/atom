@@ -17,12 +17,12 @@ namespace atom
 
 Scene::Scene()
 {
-	CMesh mesh = ResourceLoader::LoadMesh("../assets/models/cube.glb", EModelImportType::glb);
+	CMesh mesh = ResourceLoader::LoadMesh("../assets/models/sphere.glb", EModelImportType::glb);
 
 	entt::entity ent = m_Registry.create();
 	CTransform transform{};
-//	transform.Position = v3(0.f, -4.0f, 0.f);
-//	transform.Rotation = v3(90.f, 0.f, 90.f);
+//	transform.Position = v3(0.f, -1.0f, 0.f);
+//	transform.Rotation = v3(90.f, 0.f, 90.f);k
 	transform.Scale = v3(1.f);
 	m_Registry.emplace<CTransform>(ent, transform);
 	m_Registry.emplace<CMesh>(ent, mesh);

@@ -8,28 +8,17 @@
 #include <string>
 #include "../Defines.h"
 
-namespace wgpu
-{
-
-enum class FeatureName : uint32_t;
-enum class ErrorType : uint32_t;
-class Instance;
-class Adapter;
-class Device;
-struct RequestAdapterOptions;
-struct DeviceDescriptor;
+#include <webgpu/webgpu_cpp.h>
 
 namespace atom
 {
 
-std::string FeatureNameToString(FeatureName featureName);
-std::string ErrorTypeToString(ErrorType errorType);
+std::string FeatureNameToString(wgpu::FeatureName featureName);
+std::string ErrorTypeToString(wgpu::ErrorType errorType);
 std::string ErrorTypeToString(i32 errorType);
-Adapter RequestAdapter(const Instance& instance, const RequestAdapterOptions* options);
-Device RequestDevice(Adapter adapter, const DeviceDescriptor* descriptor);
+::wgpu::Adapter RequestAdapter(const wgpu::Instance& instance, const wgpu::RequestAdapterOptions* options);
+::wgpu::Device RequestDevice(wgpu::Adapter adapter, const wgpu::DeviceDescriptor* descriptor);
 
 } // namespace atom
-
-} // namespace wgpu
 
 #endif //WGPU_ATOM_H

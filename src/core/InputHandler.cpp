@@ -11,7 +11,7 @@ InputHandler& InputHandler::GetInstance()
 	return instance;
 }
 
-void InputHandler::HandleKeyInput(GLFWwindow* window, i32 key, i32 scancode, i32 action, i32 mods)
+void InputHandler::HandleKeyInput([[maybe_unused]] GLFWwindow* window, i32 key, [[maybe_unused]] i32 scancode, i32 action, [[maybe_unused]] i32 mods)
 {
 	if (action == GLFW_PRESS)
 	{
@@ -23,7 +23,7 @@ void InputHandler::HandleKeyInput(GLFWwindow* window, i32 key, i32 scancode, i32
 	}
 }
 
-void InputHandler::HandleMousePosChange(GLFWwindow* window, f64 xpos, f64 ypos)
+void InputHandler::HandleMousePosChange([[maybe_unused]] GLFWwindow* window, f64 xpos, f64 ypos)
 {
 	v2 currentMousePos = { xpos, ypos };
 	v2 delta = currentMousePos - m_LastMousePos;

@@ -6,7 +6,11 @@
 #define ATOM_RENDERER_H
 
 #include "../Defines.h"
-#include <dawn/webgpu_cpp.h>
+
+#include <vector>
+#include <webgpu/webgpu_cpp.h>
+
+#include <webgpu/webgpu_glfw.h>
 
 namespace atom
 {
@@ -112,7 +116,7 @@ public:
 
     wgpu::Device& GetDevice();
     wgpu::Queue& GetQueue();
-
+    wgpu::Instance& GetInstance();
 };
 
 }
